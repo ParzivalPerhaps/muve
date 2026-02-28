@@ -89,6 +89,37 @@ app.post('/api/images', async (req, res) => {
 })
 
 
+app.post('/api/listfromlist/', async (_req, res) => {
+
+  const list = _req.body.list;
+
+  const prompt = `Taking in the list of disabilities, accesibility requirements, or other, make a new list of things to look for in a house that would not accomadate to these.
+  By that, it means that you must list features in a house that would not be ideal to live with if someone needed the listed accessibility requirements or if they had the listed 
+  disabilities. Keep the response short and only have the list in the response. Here is the aformentioned list:`;
+  const parts: any[] = [
+    {
+      text: prompt
+    }
+  ];
+
+  
+
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts }]
+    })
+
+    const response = result.response.text();
+
+    res.json({ analysis: response })
+  }
+
+  catch (err) {
+    console.log("Error with generating list of things to look out for: ", err)
+  }
+
+})
+
 app.post('/api/triggersFromImmage/', async (_req, res) => {
   const images = _req.body.images;
 
