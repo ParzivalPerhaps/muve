@@ -216,7 +216,7 @@ app.post('/api/listfromlist/', async (_req, res) => {
   "risks": [
       { "issue": "<what the problem is>", "severity": "<low|medium|high>" }
   ],
-  "summary": "<2-3 sentence overall description of accessibility for this person>"
+  "summary": "<2-3 sentence overall description of accessibility for this person, simple english since our user target is likely older.>"
   }
 
   Only return only info that aligns with the topics in the JSON object above. Keep responses short please.`;
@@ -225,7 +225,7 @@ app.post('/api/listfromlist/', async (_req, res) => {
     {
       text: prompt
 
-      
+
     }
   ];
 
