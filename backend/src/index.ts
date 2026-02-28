@@ -2,6 +2,10 @@ import express from 'express'
 import cors from 'cors';
 import puppeteer from 'puppeteer';
 import * as cheerio from 'cheerio';
+import "dotenv/config";
+
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 
 
 const app = express();
@@ -11,6 +15,10 @@ app.use(express.json());
 const PORT = 3001
 
 
+
+
+const AI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = AI.getGenerativeModel({ model: "gemini-2.5-flash" });
 /*
 app.get('/', (_req, res) => {
   res.send('Hello Express!')
@@ -60,18 +68,19 @@ app.post('/api/images', async (req, res) => {
 
       if (src && !images.includes(src)) {
         images.push(src);
-      }});
+      }
+    });
 
-    
+
     res.json({ images });
 
-  } 
-  
+  }
+
   catch (err) {
     console.log("Scraping error:", err);
     res.status(500).json({ error: 'Failed to scrape images' });
-  } 
-  
+  }
+
   finally {
     if (browser) {
       await browser.close();
@@ -80,8 +89,63 @@ app.post('/api/images', async (req, res) => {
 })
 
 
+app.post('/api/triggersFromImmage/', async (_req, res) => {
+  const images = _req.body.images;
 
-app.get('/api/triggersFromImmage/', (_req, res) => {
+
+  const prompt = "Analyze ts";
+  const parts: any[] = [
+    {
+      text: prompt
+    }
+  ];
+
+  try {
+
+
+    // NOTHING IS LIMITING IMAGES RN, MAY NOT BE AN ISSUE OF LIKE AN IMAGE AMOUNT BUT
+    // MAY BE A TIME THING (maybe idk if it will be but might be cause vercel )
+    for (let i = 0; i < images.length; i++) {
+      const imageRes = await fetch(images[i]);
+      if (!imageRes.ok) continue;
+
+
+      const arrayBuffer = await imageRes.arrayBuffer();
+      const base64Data = Buffer.from(arrayBuffer).toString("base64");
+      const mimeType = imageRes.headers.get("content-type") || "image/jpeg";
+
+      parts.push({
+        inlineData: { data: base64Data, mimeType }
+      });
+
+    }
+
+
+
+
+  }
+
+  catch (err) {
+    console.log("Error w/ gemini", err);
+    res.status(500).json({ error: "Gemini failed" })
+  }
+
+
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts }]
+    })
+
+    const response = result.response.text();
+
+    res.json({ analysis: response })
+  }
+
+  catch (err) {
+    console.log("aslk;djfasdkjga", err)
+  }
+
+
 
 
 
