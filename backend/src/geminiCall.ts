@@ -24,9 +24,9 @@ export default async function generalImageCall (req, prompt: string) {
         
         // Switch images to imageCap if we want a limiter
 
-        // const imageCap = images.slice(0, 50);
+        const imageCap = images.slice(0, 30);
 
-        for (let i = 0; i < images.length; i++) {
+        for (let i = 0; i < imageCap.length; i++) {
             const imageRes = await fetch(images[i]);
             if (!imageRes.ok) continue;
 
