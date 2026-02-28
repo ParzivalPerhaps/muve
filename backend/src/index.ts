@@ -3,6 +3,7 @@ import cors from 'cors';
 import puppeteer from 'puppeteer';
 import * as cheerio from 'cheerio';
 import "dotenv/config";
+import generalImageCall from './geminiCall.ts';
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -182,7 +183,8 @@ app.post('/api/images', async (req, res) => {
     
     const imagesArray = Array.from(images);
     console.log(imagesArray.length);
-    res.json({ images });
+    console.log(images)
+    res.json({ imagesArray  });
 
   }
 
@@ -201,14 +203,15 @@ app.post('/api/images', async (req, res) => {
 
 app.post('/api/listfromlist/', async (_req, res) => {
 
-  const list = _req.body.list;
+  const list: string = _req.body.list;
 
   const prompt = `Taking in the list of disabilities, accesibility requirements, or other, make a new list of things to look for in a house that would not accomadate to these.
   By that, it means that you must list features in a house that would not be ideal to live with if someone needed the listed accessibility requirements or if they had the listed 
-  disabilities. Keep the response short and only have the list in the response. Here is the aformentioned list:`;
+  disabilities. Keep the response short and only have the list in the response. Here is the aformentioned list:` + list;
   const parts: any[] = [
     {
       text: prompt
+      
     }
   ];
 
@@ -231,64 +234,9 @@ app.post('/api/listfromlist/', async (_req, res) => {
 })
 
 app.post('/api/triggersFromImmage/', async (_req, res) => {
-  const images = _req.body.images;
-
-
-  const prompt = "Analyze ts";
-  const parts: any[] = [
-    {
-      text: prompt
-    }
-  ];
-
-  try {
-
-
-    // NOTHING IS LIMITING IMAGES RN, MAY NOT BE AN ISSUE OF LIKE AN IMAGE AMOUNT BUT
-    // MAY BE A TIME THING (maybe idk if it will be but might be cause vercel )
-    for (let i = 0; i < images.length; i++) {
-      const imageRes = await fetch(images[i]);
-      if (!imageRes.ok) continue;
-
-
-      const arrayBuffer = await imageRes.arrayBuffer();
-      const base64Data = Buffer.from(arrayBuffer).toString("base64");
-      const mimeType = imageRes.headers.get("content-type") || "image/jpeg";
-
-      parts.push({
-        inlineData: { data: base64Data, mimeType }
-      });
-
-    }
-
-
-
-
-  }
-
-  catch (err) {
-    console.log("Error w/ gemini", err);
-    res.status(500).json({ error: "Gemini failed" })
-  }
-
-
-  try {
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts }]
-    })
-
-    const response = result.response.text();
-
-    res.json({ analysis: response })
-  }
-
-  catch (err) {
-    console.log("aslk;djfasdkjga", err)
-  }
-
-
-
-
+  const prompt = "analyze ts";
+  const result = await generalImageCall(_req, prompt);
+  res.json(JSON.parse(result));
 
 })
 
