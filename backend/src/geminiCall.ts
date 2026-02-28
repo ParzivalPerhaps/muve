@@ -11,7 +11,6 @@ export default async function generalImageCall (req, prompt: string) {
 
     const images = req.body.images;
     
-
    
     const parts: any[] = [
         {
@@ -21,6 +20,12 @@ export default async function generalImageCall (req, prompt: string) {
 
 
     try{
+
+        
+        // Switch images to imageCap if we want a limiter
+
+        // const imageCap = images.slice(0, 50);
+
         for (let i = 0; i < images.length; i++) {
             const imageRes = await fetch(images[i]);
             if (!imageRes.ok) continue;

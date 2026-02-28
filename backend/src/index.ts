@@ -203,14 +203,28 @@ app.post('/api/images', async (req, res) => {
 
 app.post('/api/listfromlist/', async (_req, res) => {
 
-  const list: string = _req.body.list;
+  const userNeeds: string = _req.body.userNeeds;
 
-  const prompt = `Taking in the list of disabilities, accesibility requirements, or other, make a new list of things to look for in a house that would not accomadate to these.
-  By that, it means that you must list features in a house that would not be ideal to live with if someone needed the listed accessibility requirements or if they had the listed 
-  disabilities. Keep the response short and only have the list in the response. Here is the aformentioned list:` + list;
+
+  const prompt = `You are an accessibility expert analyzing house listing photos.
+  The resident has the following accessibility needs: ${userNeeds} Taking in the list of disabilities, accesibility requirements, or other, make a new list of things to look for in a house that would not accomadate to these.
+  In other words, you are finding list features in a house that either are ideal or not ideal for someone with the list disability or accessibility needs/requirements
+
+  Analyze all provided images and return these details from this JSON object:
+  {
+  "score": <number 0-100, where 100 is fully accessible>,
+  "risks": [
+      { "issue": "<what the problem is>", "severity": "<low|medium|high>" }
+  ],
+  "summary": "<2-3 sentence overall description of accessibility for this person>"
+  }
+
+  Only return only info that aligns with the topics in the JSON object above. Keep responses short please.`;
+
   const parts: any[] = [
     {
       text: prompt
+
       
     }
   ];
@@ -234,8 +248,8 @@ app.post('/api/listfromlist/', async (_req, res) => {
 })
 
 app.post('/api/triggersFromImmage/', async (_req, res) => {
-  const prompt = "analyze ts";
-  const result = await generalImageCall(_req, prompt);
+  
+  const result = await generalImageCall(_req);
   res.json(JSON.parse(result));
 
 })
