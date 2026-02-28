@@ -2,11 +2,14 @@
   "name": "express",
   "type": "module",
   "dependencies": {
-    "express": "5.1.0"
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.6",
+    "express": "5.1.0",
+    "puppeteer": "^24.37.5"
   },
   "devDependencies": {
-    "@types/node": "20.11.17",
     "@types/express": "5.0.0",
+    "@types/node": "20.11.17",
     "typescript": "5.8.3"
   }
 }
