@@ -12,7 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = 3001
+const PORT = process.env.PORT || 3001;
 
 
 
@@ -34,9 +34,80 @@ app.get('/api/posts/:postId/comments/:commentId', (_req, res) => {
    */
 
 
+async function searchUrlFromAddress(address: string, page: puppeteer.Page): Promise<string | null> {
+  try {
+    //duckduckgo
+    const searchUrl = `https://html.duckduckgo.com/html/?q=site:redfin.com+${encodeURIComponent(address)}`;
+    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    const html = await page.content();
+    const cheerioTime = cheerio.load(html);
+
+    let resultUrl: string | null = null;
+    cheerioTime('a.result__url').each((_i, el) => {
+
+      const href = cheerioTime(el).attr('href');
+      if (href && href.includes('redfin.com')) {
+
+        const urlMatch = href.match(/uddg=([^&]+)/);
+
+        if (urlMatch) {
+          resultUrl = decodeURIComponent(urlMatch[1]);
+        }
+
+        else {
+
+          const text = cheerioTime(el).text().trim();
+          if (text.includes('redfin.com')) {
+            resultUrl = 'https://' + text;
+          }
+
+          else {
+            resultUrl = href;
+          }
+        }
+        return false;
+      }
+    });
+
+    if (!resultUrl) {
+      cheerioTime('a').each((_i, el) => {
+
+        const href = cheerioTime(el).attr('href');
+        if (href && href.includes('redfin.com')) {
+
+          const urlMatch = href.match(/uddg=([^&]+)/);
+
+          if (urlMatch) {
+            resultUrl = decodeURIComponent(urlMatch[1]);
+          }
+
+          else {
+            resultUrl = href;
+          }
+          return false;
+        }
+      });
+    }
+    console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++=\n" + resultUrl + "\n" + "++++++++++++++++++++++++++++");
+
+    return resultUrl;
+  }
+  catch (err) {
+    console.error("Error searching for address:", err);
+    return null;
+  }
+}
+
+
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// RIGHT NOW IT ISN'T RETURNING JUST HTE PROPERTY PHOTOS, NEED TO BETTER FILTER
+// |- > I LIED, ITS TAKING FIRST 7 PHOTOS FROM THE PAGE AND THE REST OF THE PHOTOS ON FIRST
+/* LOADING PAGE BUT NOT THE REST OF THE PHOTOS FROM THE PROPERTY
+will fix tomorrow, for testing just take first couple of photos, thank you*/
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 app.post('/api/images', async (req, res) => {
   const url = req.body.url;
-
+  const address = req.body.address;
 
 
   let browser = null;
@@ -52,14 +123,27 @@ app.post('/api/images', async (req, res) => {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
 
+    let targetUrl = url;
+
+    if (!targetUrl && address) {
+      targetUrl = await searchUrlFromAddress(address, page);
+
+      if (!targetUrl) {
+        return res.status(404).json({ error: "Cant get url from address" });
+      }
+
+    }
+
     //was trying to get content too soon so (could make it lower (probably))
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(targetUrl as string, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await new Promise(r => setTimeout(r, 3000));
 
     const html = await page.content();
     const cheerioTime = cheerio.load(html);
 
     const images: string[] = [];
+
+    const isRedfin = (targetUrl as string).includes('redfin.com');
 
     cheerioTime('img').each((_i, element) => {
 
@@ -71,7 +155,7 @@ app.post('/api/images', async (req, res) => {
       }
     });
 
-
+    console.log(images.length);
     res.json({ images });
 
   }
@@ -102,7 +186,7 @@ app.post('/api/listfromlist/', async (_req, res) => {
     }
   ];
 
-  
+
 
   try {
     const result = await model.generateContent({
