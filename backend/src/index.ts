@@ -100,10 +100,7 @@ async function searchUrlFromAddress(address: string, page: puppeteer.Page): Prom
 
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// RIGHT NOW IT ISN'T RETURNING JUST HTE PROPERTY PHOTOS, NEED TO BETTER FILTER
-// |- > I LIED, ITS TAKING FIRST 7 PHOTOS FROM THE PAGE AND THE REST OF THE PHOTOS ON FIRST
-/* LOADING PAGE BUT NOT THE REST OF THE PHOTOS FROM THE PROPERTY
-will fix tomorrow, for testing just take first couple of photos, thank you*/
+// Right now, grabbing more images, need to chekc that they are right, but they for the most part are or should be
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 app.post('/api/images', async (req, res) => {
   const url = req.body.url;
@@ -145,13 +142,41 @@ app.post('/api/images', async (req, res) => {
 
     const isRedfin = (targetUrl as string).includes('redfin.com');
 
+
+
+    cheerioTime('meta[property="og:image"]').each((_, el) => {
+      const content = cheerioTime(el).attr('content');
+      if (content) images.push(content);
+    });
+
+
+    // initital lookthrough on main
     cheerioTime('img').each((_i, element) => {
 
 
       const src = cheerioTime(element).attr('src');
 
-      if (src && !images.includes(src)) {
-        images.push(src);
+      if (src && src.includes("redfin.com")) {
+        if (src.includes("genMid")) {
+          images.push(src);
+        }
+        else if (src.includes("bigphoto")) {
+          images.push(src);
+        }
+        else if (src.includes("mbpaddedwide")) {
+          images.push(src);
+        }
+      }
+    });
+
+
+    console.log(images.length);
+    cheerioTime('script').each((_, el) => {
+      const content = cheerioTime(el).html();
+      
+      if (content && content.includes('genBcs') && content.includes('ssl.cdn-redfin.com')) {
+        const unicodeUrls = content.match(/https:\\u002F\\u002Fssl\.cdn-redfin\.com\\u002Fphoto\\u002F\d+\\u002Fbcsphoto\\u002F\d+\\u002F[a-zA-Z0-9_\.]+\.jpg/g) || [];
+        unicodeUrls.forEach(u => images.push(u.replace(/\\u002F/g, '/')));
       }
     });
 
