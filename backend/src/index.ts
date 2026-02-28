@@ -138,7 +138,7 @@ app.post('/api/images', async (req, res) => {
     const html = await page.content();
     const cheerioTime = cheerio.load(html);
 
-    const images: string[] = [];
+    const images = new Set();
 
     const isRedfin = (targetUrl as string).includes('redfin.com');
 
@@ -146,7 +146,7 @@ app.post('/api/images', async (req, res) => {
 
     cheerioTime('meta[property="og:image"]').each((_, el) => {
       const content = cheerioTime(el).attr('content');
-      if (content) images.push(content);
+      if (content) images.add(content);
     });
 
 
@@ -158,29 +158,30 @@ app.post('/api/images', async (req, res) => {
 
       if (src && src.includes("redfin.com")) {
         if (src.includes("genMid")) {
-          images.push(src);
+          images.add(src);
         }
         else if (src.includes("bigphoto")) {
-          images.push(src);
+          images.add(src);
         }
         else if (src.includes("mbpaddedwide")) {
-          images.push(src);
+          images.add(src);
         }
       }
     });
 
 
-    console.log(images.length);
+    
     cheerioTime('script').each((_, el) => {
       const content = cheerioTime(el).html();
       
       if (content && content.includes('genBcs') && content.includes('ssl.cdn-redfin.com')) {
         const unicodeUrls = content.match(/https:\\u002F\\u002Fssl\.cdn-redfin\.com\\u002Fphoto\\u002F\d+\\u002Fbcsphoto\\u002F\d+\\u002F[a-zA-Z0-9_\.]+\.jpg/g) || [];
-        unicodeUrls.forEach(u => images.push(u.replace(/\\u002F/g, '/')));
+        unicodeUrls.forEach(u => images.add(u.replace(/\\u002F/g, '/')));
       }
     });
-
-    console.log(images.length);
+    
+    const imagesArray = Array.from(images);
+    console.log(imagesArray.length);
     res.json({ images });
 
   }
