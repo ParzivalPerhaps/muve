@@ -32,7 +32,7 @@ export const DEFAULT_COORDINATES: Coordinates = {
   lon: -117.879669,
 };
 
-const GLOBE_TEXTURE_URL = "/globe_texture_5.png";
+const GLOBE_TEXTURE_URL = "/eeee.jpg";
 const FRONT_BIAS_VECTOR = new Vector3(0, 0.93, 1).normalize();
 const NORTH_POLE_VECTOR = new Vector3(0, 1, 0);
 const WORLD_UP_VECTOR = new Vector3(0, 1, 0);
