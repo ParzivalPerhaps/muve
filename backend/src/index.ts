@@ -4,6 +4,7 @@ import puppeteer from 'puppeteer';
 import * as cheerio from 'cheerio';
 import "dotenv/config";
 import { generalImageCall, imageinGroups } from './geminiCall.ts';
+import { runSpecialtyChecks, parseSpecialtyFlags, type SpecialtyResult } from './specialtyfunctions.ts';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from '@supabase/supabase-js';
 
@@ -113,7 +114,7 @@ app.post('/api/analyzeProperty', async (req, res) => {
 // ---------------------------------------------------------------------------
 // API: Check Session Status
 // ---------------------------------------------------------------------------
-app.get('/api/session/:id', async (req, res) => {
+app.get('/api/evaluationUpdate/:id', async (req, res) => {
   const { id } = req.params;
   const { data, error } = await supabase
     .from('evaluations')
@@ -121,7 +122,7 @@ app.get('/api/session/:id', async (req, res) => {
     .eq('id', id)
     .single();
 
-  if (error) return res.status(404).json({ error: "Session not found" });
+  if (error) return res.status(404).json({ error: "Evaluation not found" });
   res.json(data);
 });
 
@@ -158,8 +159,21 @@ async function processPropertyBackground(
       checklist
     );
 
+    // Step 3.5: Run specialty checks if the checklist flagged any
+    const specialtyFlags = parseSpecialtyFlags(checklist);
+    let specialtyResults: SpecialtyResult[] = [];
+    if (specialtyFlags.elevation || specialtyFlags.proximity || specialtyFlags.pollution) {
+      console.log(`[Session ${sessionId}] Running specialty checks:`, specialtyFlags);
+      specialtyResults = await runSpecialtyChecks(
+        address || url,
+        model,
+        specialtyFlags
+      );
+      console.log(`[Session ${sessionId}] Specialty checks completed: ${specialtyResults.length} results`);
+    }
+
     // Step 4: Generate final accessibility summary
-    await generateFinalSummary(sessionId, imageAnalysisResults, userNeeds);
+    await generateFinalSummary(sessionId, imageAnalysisResults, userNeeds, specialtyResults);
 
     console.log(`[Session ${sessionId}] Analysis completed successfully!`);
 
@@ -188,8 +202,14 @@ async function generateAccessibilityChecklist(
 
   const prompt = `Based on these accessibility needs: "${userNeeds}", generate a concise list of architectural or housing features that would be problematic or serve as triggers. Respond strictly with a comma-separated list of features to look out for.
   At the end of it, generate a list of triggers that could cause the score to go down. Make this section named "TRIGGERS: ", make sure that they are common triggers.
-  Make sure the triggers are simple
-  
+  Make sure the triggers are simple.
+
+  Finally, on a new line at the very end, output EXACTLY this format (include only the relevant ones, omit those that are not relevant):
+  SPECIALTY_CHECKS: elevation, proximity, pollution
+
+  - Include "elevation" if the user has mobility challenges (wheelchair, walker, difficulty with stairs/hills).
+  - Include "proximity" if the user needs nearby services due to limited mobility or transportation dependence.
+  - Include "pollution" if the user is sensitive to noise, light, or busy/overstimulating environments.
   `;
 
   const result = await model.generateContent(prompt);
@@ -336,7 +356,7 @@ async function analyzeImagesInBatches(
 async function analyzeSingleBatch(
   imageUrls: string[],
   prompt: string
-): Promise<Array<{ image_url: string; trigger_found: string | null, pixel_coordinates: string | null  }>> {
+): Promise<Array<{ image_url: string; trigger_found: string | null, pixel_coordinates: string | null }>> {
   const aiResponseStr = await imageinGroups(imageUrls, prompt);
 
   if (!aiResponseStr) {
@@ -354,7 +374,7 @@ async function analyzeSingleBatch(
   // Map AI results to our format
   return parsedResults.map((result: any, index: number) => ({
     image_url: imageUrls[index],
-    trigger_found: result.trigger !== 'None' ? result.trigger : null, 
+    trigger_found: result.trigger !== 'None' ? result.trigger : null,
     pixel_coordinates: result.pixel_coordinates ? result.pixel_coordinates : null
   }));
 }
@@ -365,7 +385,8 @@ async function analyzeSingleBatch(
 async function generateFinalSummary(
   sessionId: string,
   imageResults: Array<{ image_url: string; trigger_found: string | null }>,
-  userNeeds: string
+  userNeeds: string,
+  specialtyResults: SpecialtyResult[] = []
 ): Promise<void> {
   console.log(`[Session ${sessionId}] Generating final summary...`);
 
@@ -378,10 +399,15 @@ async function generateFinalSummary(
     ? issuesFound.join(', ')
     : 'No major issues found.';
 
+  // Build specialty findings section
+  const specialtySection = specialtyResults.length > 0
+    ? `\n\nAdditionally, the following surrounding-area assessments were performed:\n${specialtyResults.map(r => `**${r.category}**: ${r.findings}`).join('\n\n')}`
+    : '';
+
   // Generate summary with AI
   const summaryPrompt = `A house was analyzed for these user needs: ${userNeeds}. 
-  The following issues were found in the photos: ${issuesSummary}. 
-  Write a 2-3 sentence overall summary of the accessibility of this house. Rate it with a score from 0-100.
+  The following issues were found in the photos: ${issuesSummary}.${specialtySection}
+  Write a 2-3 sentence overall summary of the accessibility of this house, incorporating both the property issues and any surrounding-area findings. Rate it with a score from 0-100.
   Return strictly JSON: {"score": 85, "summary": "..."}`;
 
   const summaryResult = await model.generateContent(summaryPrompt);
@@ -512,7 +538,7 @@ app.post('/api/images', async (req, res) => {
     });
 
     const targetId = Array.from(images)[0].split("/")[6];
-   
+
     const imagesArray = Array.from(images).filter((v) => v.split("/")[6] == targetId);
     console.log(imagesArray.length);
     console.log(images)
@@ -586,3 +612,7 @@ app.listen(PORT, () => {
 })
 
 export default app;
+
+
+
+
