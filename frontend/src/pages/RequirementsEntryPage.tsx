@@ -47,7 +47,11 @@ export default function RequirementsEntryPage({
     setIsSubmitting(true);
 
     try {
-      const w = await analyzeProperty({ userNeeds: freeText, address });
+      const w = await analyzeProperty({
+        userNeeds: freeText,
+        address,
+        images: images,
+      });
       onEvaluationStarted(w.sessionId);
     } catch {
       setIsSubmitting(false);
