@@ -16,6 +16,7 @@ const PORT = process.env.PORT || 3001;
 
 const AI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 const model = AI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const expensiveModel = AI.getGenerativeModel({model: "gemini-3.1-pro-preview"})
 
 const supabase = createClient(
   process.env.SUPABASE_URL as string,
@@ -205,16 +206,17 @@ async function generateAccessibilityChecklist(
 ): Promise<string> {
   console.log(`[Session ${sessionId}] Generating accessibility checklist...`);
 
-  const prompt = `Based on these accessibility needs: "${userNeeds}", generate a concise list of architectural or housing features that would be problematic or serve as triggers. Respond strictly with a comma-separated list of features to look out for.
-  At the end of it, generate a list of triggers that could cause the score to go down. Make this section named "TRIGGERS: ", make sure that they are common triggers.
-  Make sure the triggers are simple.
+  const prompt = `Based on these accessibility needs: "${userNeeds}", generate a concise list of architectural or housing features that would be strictly problematic. Respond strictly with a comma-separated list of features to look out for.
+  Only include the problematic features if they are really big and really important, meaning absolute dealbreakers or critical safety hazards that make living there impossible (ignore minor inconveniences or easily modifiable things).
+  At the end of it, put a list of problematic features that could cause the score to go down. Make this section named "PROBLEMS: ", make sure that they are common problematic features.
+  Make sure the problematic features are simple.
 
   Finally, on a new line at the very end, output EXACTLY this format (include only the relevant ones, omit those that are not relevant):
   SPECIALTY_CHECKS: elevation, proximity, pollution
 
-  - Include "elevation" if the user has mobility challenges (wheelchair, walker, difficulty with stairs/hills).
-  - Include "proximity" if the user needs nearby services due to limited mobility or transportation dependence.
-  - Include "pollution" if the user is sensitive to noise, light, or busy/overstimulating environments.
+  - Include "elevation" ONLY if the user has severe mobility challenges that make negotiating any stairs or hills completely impossible (e.g., exclusively uses a wheelchair).
+  - Include "proximity" ONLY if the user completely lacks transportation and relies entirely on immediate walking distance to daily essential services.
+  - Include "pollution" ONLY if the user has a high, medically-necessary sensitivity to noise, light, or busy environments that would cause severe distress.
   `;
 
   const result = await model.generateContent(prompt);
@@ -298,7 +300,7 @@ async function scrapePropertyImages(
     }
   });
 
-  const allImages = Array.from(imagesSet).slice(0, 30); // Limit to 30 images
+  const allImages = Array.from(imagesSet).slice(0, 28); // Limit to 30 images
   console.log(`[Session ${sessionId}] Found ${allImages.length} images`);
 
   return allImages;
@@ -312,17 +314,17 @@ async function analyzeImagesInBatches(
   images: string[],
   checklist: string
 ): Promise<Array<{ image_url: string; trigger_found: string[] | null }>> {
-  const BATCH_SIZE = 1;
+  const BATCH_SIZE = 4;
   const BATCH_DELAY_MS = 1000;
   const accumulatedResults: Array<{ image_url: string; trigger_found: string[] | null }> = [];
 
   const totalBatches = Math.ceil(images.length / BATCH_SIZE);
   console.log(`[Session ${sessionId}] Processing ${images.length} images in ${totalBatches} batches...`);
 
-  const analysisPrompt = `Analyze these images. Look for the following accessibility triggers: ${checklist}. 
+  const analysisPrompt = `Analyze these images. Look for the following features that make it not so accessible : ${checklist}. However, try to not flag too many images if not needed, keep it conservative and low
   Return a STRICT JSON array of objects. Format: [{"url": "<image_url>", "trigger": "<describe trigger found, or 'None'>", "pixel_coordinates": <pixel coordinates if possible, if not put null>}]
-  I want you to also make sure the identifiers are in groups. There is a list called TRIGGERS: above, I want you to use just those triggers and make the identifiers those. For the coordinates, make sure its an array of 2 numbers with it being number 1 x number 2.
-  Can you also make it so there can be multiple triggers per image, with it being separated by a comma, only do this if needed
+  I want you to also make sure the identifiers are in groups. There is a list called PROBLEMS: above, I want you to use just those features and make the identifiers those. For the coordinates, make sure its an array of 2 numbers with it being number 1 x number 2.
+  Can you also make it so there can be multiple features per image, with it being separated by a comma, only do this if needed
   `;
 
   for (let i = 0; i < images.length; i += BATCH_SIZE) {

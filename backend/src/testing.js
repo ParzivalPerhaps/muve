@@ -9,8 +9,8 @@ async function testWorkflow() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            address: "3126 S Rita Way, Santa Ana, CA 92704",
-            userNeeds: "Uses a wheelchair, needs zero-step entry, wide doorways, and roll-in shower."
+            address: "1400 Heritage Lndg Unit 203, St Charles, MO ",
+            userNeeds: "I am a disabled war veteran with ptsd, cataracts, and have trouble walking."
         })
     });
 

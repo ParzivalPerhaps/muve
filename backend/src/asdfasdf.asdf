@@ -1,0 +1,242 @@
+[
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/mbpaddedwide/931/genMid.26010931_0.jpg",
+    "trigger_found": [
+      "Slippery floors",
+      "Narrow doorways"
+    ],
+    "pixel_coordinates": [
+      [
+        475,
+        730
+      ],
+      [
+        680,
+        430
+      ]
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/bigphoto/931/26010931_0.jpg",
+    "trigger_found": [
+      "Slippery floors",
+      "Narrow doorways"
+    ],
+    "pixel_coordinates": [
+      [
+        475,
+        730
+      ],
+      [
+        680,
+        430
+      ]
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/mbphotov3/931/genMid.26010931_10_0.jpg",
+    "trigger_found": [
+      "Slippery floors",
+      "Narrow doorways",
+      "High thresholds",
+      "Lack of privacy"
+    ],
+    "pixel_coordinates": [
+      [
+        500,
+        750
+      ],
+      [
+        300,
+        400
+      ],
+      [
+        780,
+        640
+      ],
+      [
+        780,
+        460
+      ]
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/mbphotov3/931/genMid.26010931_30_0.jpg",
+    "trigger_found": [
+      "Slippery floors",
+      "Glare",
+      "High thresholds",
+      "Lack of privacy"
+    ],
+    "pixel_coordinates": [
+      [
+        500,
+        750
+      ],
+      [
+        500,
+        400
+      ],
+      [
+        500,
+        640
+      ],
+      [
+        500,
+        400
+      ]
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/mbphotov3/931/genMid.26010931_16_0.jpg",
+    "trigger_found": [
+      "Glare"
+    ],
+    "pixel_coordinates": [
+      480,
+      260
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/mbphotov3/931/genMid.26010931_24_0.jpg",
+    "trigger_found": [
+      "High thresholds",
+      "Uneven flooring"
+    ],
+    "pixel_coordinates": [
+      290,
+      560
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/mbphotov3/931/genMid.26010931_6_0.jpg",
+    "trigger_found": [
+      "Slippery floors"
+    ],
+    "pixel_coordinates": [
+      500,
+      750
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/mbphotov3/931/genMid.26010931_20_0.jpg",
+    "trigger_found": [
+      "No grab bars",
+      "Slippery floors"
+    ],
+    "pixel_coordinates": [
+      350,
+      600
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/mbpaddedwide/568/genMid.23064568_7_0.jpg",
+    "trigger_found": [
+      "High thresholds",
+      "Uneven flooring"
+    ],
+    "pixel_coordinates": null
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/bcsphoto/931/genBcs.26010931_0.jpg",
+    "trigger_found": [
+      "Slippery floors"
+    ],
+    "pixel_coordinates": [
+      670,
+      480
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/bcsphoto/931/genBcs.26010931_1_0.jpg",
+    "trigger_found": [
+      "Slippery floors"
+    ],
+    "pixel_coordinates": [
+      800,
+      480
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/bcsphoto/931/genBcs.26010931_2_0.jpg",
+    "trigger_found": [
+      "No grab bars",
+      "High thresholds",
+      "Slippery floors"
+    ],
+    "pixel_coordinates": null
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/bcsphoto/931/genBcs.26010931_3_0.jpg",
+    "trigger_found": [
+      "Slippery floors",
+      "Narrow doorways",
+      "Glare"
+    ],
+    "pixel_coordinates": [
+      [
+        500,
+        750
+      ],
+      [
+        210,
+        320
+      ],
+      [
+        500,
+        60
+      ]
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/bcsphoto/931/genBcs.26010931_4_0.jpg",
+    "trigger_found": [
+      "Slippery floors",
+      "Glare"
+    ],
+    "pixel_coordinates": [
+      [
+        500,
+        750
+      ],
+      [
+        500,
+        60
+      ]
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/bcsphoto/931/genBcs.26010931_5_0.jpg",
+    "trigger_found": [
+      "Slippery floors",
+      "Glare"
+    ],
+    "pixel_coordinates": [
+      [
+        500,
+        800
+      ],
+      [
+        490,
+        190
+      ]
+    ]
+  },
+  {
+    "image_url": "https://ssl.cdn-redfin.com/photo/156/bcsphoto/931/genBcs.26010931_6_0.jpg",
+    "trigger_found": [
+      "Slippery floors",
+      "Glare"
+    ],
+    "pixel_coordinates": [
+      [
+        500,
+        800
+      ],
+      [
+        490,
+        190
+      ]
+    ]
+  }
+]
