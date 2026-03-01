@@ -18,7 +18,10 @@ function App() {
     setResolvedCoordinates(coords);
   }
 
-  function handleAddressConfirmed() {
+  const [confirmedAddress, setConfirmedAddress] = useState("");
+
+  function handleAddressConfirmed(_coords: Coordinates, address: string) {
+    setConfirmedAddress(address);
     setStep("requirements");
   }
 
@@ -72,7 +75,7 @@ function App() {
             step === "requirements" ? "translate-x-0" : "translate-x-full"
           }`}
         >
-          <RequirementsEntryPage />
+          <RequirementsEntryPage address={confirmedAddress} />
         </div>
       </div>
 
