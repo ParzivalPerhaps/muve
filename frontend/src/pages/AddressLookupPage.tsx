@@ -122,7 +122,7 @@ export default function AddressLookupPage({
           {!showConfirmation && (
             <input
               id="address-input"
-              className={`block w-full rounded-[10px] border px-3 py-[14px] text-[18px] leading-[1.2] text-primary-dark placeholder:text-[#8e9291] focus:border-[#737675] selection:bg-accent focus:outline-none md:rounded-[14px] md:px-5 md:py-4 transition-all duration-500 ease-in-out ${
+              className={`block w-full border-b bg-transparent px-0 py-[10px] text-[16px] leading-[1.4] text-primary-dark placeholder:text-[#8e9291] focus:border-[#737675] selection:bg-accent focus:outline-none transition-all duration-500 ease-in-out ${
                 showConfirmation
                   ? "opacity-0 scale-y-0 h-0 py-0 border-transparent overflow-hidden"
                   : "opacity-100 scale-y-100 border-[#8c908f]"

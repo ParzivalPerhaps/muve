@@ -391,7 +391,7 @@ function GlobeScene({ target }: { target: Coordinates }) {
         </mesh>
 
         <mesh position={markerPosition}>
-          <sphereGeometry args={[0.015, 24, 24]} />
+          <sphereGeometry args={[0.005, 24, 24]} />
           <meshStandardMaterial
             color="#78dda2"
             emissive="#78dda2"

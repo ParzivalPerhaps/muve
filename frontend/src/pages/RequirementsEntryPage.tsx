@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import FlagIcon from "../icons/FlagIcon";
 
 const SUGGESTED_TAGS = [
@@ -16,6 +16,16 @@ export default function RequirementsEntryPage({
 }: RequirementsEntryPageProps) {
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [freeText, setFreeText] = useState("");
+  const [flagShaking, setFlagShaking] = useState(false);
+  const hasShaken = useRef(false);
+  const shakeTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+  const triggerShake = useCallback(() => {
+    if (hasShaken.current) return;
+    hasShaken.current = true;
+    setFlagShaking(true);
+    shakeTimeout.current = setTimeout(() => setFlagShaking(false), 500);
+  }, []);
 
   function toggleTag(tag: string) {
     setSelectedTags((prev) => {
@@ -27,6 +37,7 @@ export default function RequirementsEntryPage({
       }
       return next;
     });
+    triggerShake();
   }
 
   function handleRunEvaluation() {
@@ -45,7 +56,7 @@ export default function RequirementsEntryPage({
       <div className="max-w-[1092px] px-6 md:pl-[126px] md:pr-0 mt-12 md:mt-[60px] min-[1440px]:mt-[106px]">
         <h1 className="m-0 flex items-center gap-4 text-[48px] font-normal selection:bg-accent leading-[1.04] tracking-[-0.01em] text-primary-dark">
           <FlagIcon
-            className="h-[24px] w-[24px] shrink-0 text-primary-dark mt-auto mb-1"
+            className={`h-[24px] w-[24px] shrink-0 text-primary-dark mt-auto mb-1 ${flagShaking ? "animate-flag-shake" : ""}`}
             aria-hidden="true"
           />
           <span>what do you want us to look for?</span>
@@ -76,7 +87,13 @@ export default function RequirementsEntryPage({
         <input
           className="mt-4 block w-full border-b border-[#8c908f] bg-transparent px-0 py-[10px] text-[16px] leading-[1.4] text-primary-dark placeholder:text-[#8e9291] focus:border-[#737675] selection:bg-accent focus:outline-none"
           value={freeText}
-          onChange={(e) => setFreeText(e.target.value)}
+          onChange={(e) => {
+            const prev = freeText;
+            setFreeText(e.target.value);
+            if (prev.length === 0 && e.target.value.length > 0) {
+              triggerShake();
+            }
+          }}
           placeholder="I have a back injury. I'd rather not inflammate by gates/fences."
         />
 
