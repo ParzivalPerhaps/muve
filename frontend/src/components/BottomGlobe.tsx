@@ -378,7 +378,7 @@ function GlobeScene({ target }: { target: Coordinates }) {
 
         {/* Remove for aura light thingy */}
         <mesh>
-          <sphereGeometry args={[1.03, 96, 96]} />
+          <sphereGeometry args={[1.01, 96, 96]} />
           <meshStandardMaterial
             color="#ffffff"
             emissive="#ffffff"
