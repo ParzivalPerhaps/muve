@@ -243,10 +243,10 @@ function GlobeScene({ target }: { target: Coordinates }) {
   const isSmallViewport = size.width < 768;
   const globePosition: [number, number, number] = isSmallViewport
     ? [0, -1.72, 0]
-    : [0, -1.65, 0];
-  const globeScale: [number, number, number] = isSmallViewport
-    ? [3.72, 3, 3.72]
-    : [4.05, 3, 4.05];
+    : [0, -1.8, 0];
+    const globeScale: [number, number, number] = isSmallViewport
+    ? [3.2, 3.2, 3.2]
+    : [3.5, 3.5, 3.5];
 
   const targetQuaternion = useMemo(
     () => toNorthUpTargetQuaternion({ lat: target.lat, lon: target.lon }),
@@ -318,20 +318,6 @@ function GlobeScene({ target }: { target: Coordinates }) {
             color="#ffffff"
             metalness={0}
             roughness={0.88}
-          />
-        </mesh>
-
-      {/* Remove for aura light thingy */}
-        <mesh>
-          <sphereGeometry args={[1.03, 96, 96]} />
-          <meshStandardMaterial
-            color="#9fded9"
-            emissive="#9fded9"
-            emissiveIntensity={0.1}
-            transparent
-            opacity={0.12}
-            metalness={0}
-            roughness={1}
           />
         </mesh>
 
