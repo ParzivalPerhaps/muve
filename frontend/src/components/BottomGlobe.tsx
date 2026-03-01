@@ -354,7 +354,7 @@ function GlobeScene({ target }: { target: Coordinates }) {
               {...(displacementMap
                 ? {
                     displacementMap,
-                    displacementScale: 0.015,
+                    displacementScale: 0.01,
                   }
                 : {})}
             />

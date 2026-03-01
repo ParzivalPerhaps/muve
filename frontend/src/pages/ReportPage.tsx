@@ -1,5 +1,5 @@
 import type { PropertySession } from "../lib/api";
-import LocationIcon from "../icons/LocationIcon";
+import ReportIcon from "../icons/ReportIcon";
 
 interface ReportPageProps {
   session: PropertySession | null;
@@ -67,12 +67,12 @@ export default function ReportPage({
   );
 
   return (
-    <section className="relative z-10 h-full flex flex-col">
+    <section className="relative z-10 h-full flex flex-col print:h-auto print:block">
       {/* Header + score — pinned, never scrolls */}
       <div className="flex-shrink-0 px-6 md:pl-[126px] md:pr-[126px] mt-12 md:mt-[60px] min-[1440px]:mt-[106px]">
         <h1 className="m-0 flex items-start gap-3 text-[28px] sm:text-[36px] md:text-[48px] font-normal selection:bg-accent leading-[1.04] tracking-[-0.01em] text-primary-dark">
-          <LocationIcon
-            className="h-[20px] w-[20px] md:h-[24px] md:w-[24px] shrink-0 mt-[10px] md:mt-[12px]"
+          <ReportIcon
+            className="h-[20px] w-[20px] md:h-[24px] md:w-[24px] shrink-0 mt-[10px] md:mt-[24px]"
             aria-hidden="true"
           />
           <span>
@@ -96,67 +96,68 @@ export default function ReportPage({
       <hr className="flex-shrink-0 mt-6 w-2/3 mr-auto ml-32 border-primary-dark/15" />
 
       {/* Scrollable area */}
-      <div className="flex-1 relative overflow-hidden">
-      <div className="h-full overflow-y-auto pb-10">
+      <div className="flex-1 relative overflow-hidden print:overflow-visible print:h-auto">
+        <div className="h-full overflow-y-auto pb-10 print:h-auto print:overflow-visible">
+          {/* Two-column findings */}
+          <div className="mt-8 px-8 md:pl-[126px] md:pr-[200px] grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-24">
+            {/* Left: visual inspection */}
+            <div>
+              <p className="text-[15px] text-accent mb-5">visual inspection</p>
+              <div className="flex flex-col gap-5">
+                {visualFlags.length === 0 ? (
+                  <p className="text-[15px] text-primary-dark/40">
+                    no visual concerns found
+                  </p>
+                ) : (
+                  visualFlags.map(([key, displayName]) => {
+                    const thumbs = flagImagesMap[key] ?? [];
+                    return (
+                      <div key={key} className="flex items-center gap-4">
+                        <span className="text-[18px] sm:text-[20px] font-normal text-primary-dark">
+                          {displayName}
+                        </span>
+                        {thumbs.length > 0 && <StackedThumbs urls={thumbs} />}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
 
-      {/* Two-column findings */}
-      <div className="mt-8 px-8 md:pl-[126px] md:pr-[200px] grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-24">
-        {/* Left: visual inspection */}
-        <div>
-          <p className="text-[15px] text-accent mb-5">visual inspection</p>
-          <div className="flex flex-col gap-5">
-            {visualFlags.length === 0 ? (
-              <p className="text-[15px] text-primary-dark/40">
-                no visual concerns found
-              </p>
-            ) : (
-              visualFlags.map(([key, displayName]) => {
-                const thumbs = flagImagesMap[key] ?? [];
-                return (
-                  <div key={key} className="flex items-center gap-4">
-                    <span className="text-[18px] sm:text-[20px] font-normal text-primary-dark">
-                      {displayName}
-                    </span>
-                    {thumbs.length > 0 && <StackedThumbs urls={thumbs} />}
-                  </div>
-                );
-              })
-            )}
+            {/* Right: context analysis */}
+            <div>
+              <p className="text-[15px] text-accent mb-5">context analysis</p>
+              <div className="flex flex-col gap-5">
+                {specialtyResults.length === 0 ? (
+                  <p className="text-[15px] text-primary-dark/40">
+                    no context concerns found
+                  </p>
+                ) : (
+                  specialtyResults.map((sr) => (
+                    <div key={sr.category}>
+                      <p className="text-[18px] sm:text-[20px] font-normal text-primary-dark">
+                        {sr.category}
+                      </p>
+                      <p className="mt-0.5 text-[14px] text-primary-dark/50 leading-snug">
+                        {sr.findings}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Right: context analysis */}
-        <div>
-          <p className="text-[15px] text-accent mb-5">context analysis</p>
-          <div className="flex flex-col gap-5">
-            {specialtyResults.length === 0 ? (
-              <p className="text-[15px] text-primary-dark/40">
-                no context concerns found
-              </p>
-            ) : (
-              specialtyResults.map((sr) => (
-                <div key={sr.category}>
-                  <p className="text-[18px] sm:text-[20px] font-normal text-primary-dark">
-                    {sr.category}
-                  </p>
-                  <p className="mt-0.5 text-[14px] text-primary-dark/50 leading-snug">
-                    {sr.findings}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        {/* end inner scroll */}
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white/70 to-transparent print:hidden" />
       </div>
-
-      </div>{/* end inner scroll */}
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white/70 to-transparent" />
-      </div>{/* end scrollable area */}
+      {/* end scrollable area */}
 
       {/* Bottom actions — pinned, never scrolls */}
-      <div className="flex-shrink-0 py-6 px-6 md:pl-[126px] flex gap-3">
+      <div className="flex-shrink-0 py-6 px-6 md:pl-[126px] flex gap-3 print:hidden">
         <button
           type="button"
+          onClick={() => window.print()}
           className="rounded-[10px] cursor-pointer border border-accent bg-transparent px-[24px] py-[8px] text-[15px] leading-none text-accent hover:bg-accent/5 transition-all duration-75"
         >
           download as pdf

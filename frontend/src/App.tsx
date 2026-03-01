@@ -1,5 +1,7 @@
 import { useState } from "react";
-import AddressLookupPage, { PLACEHOLDER_OPTIONS } from "./pages/AddressLookupPage";
+import AddressLookupPage, {
+  PLACEHOLDER_OPTIONS,
+} from "./pages/AddressLookupPage";
 import RequirementsEntryPage from "./pages/RequirementsEntryPage";
 import AnalysisPage from "./pages/AnalysisPage";
 import ReportPage from "./pages/ReportPage";
@@ -12,11 +14,15 @@ function App() {
   const [step, setStep] = useState<Step>("address");
   const [globeHidden, setGlobeHidden] = useState(false);
   const [initialPlaceholder] = useState(
-    () => PLACEHOLDER_OPTIONS[Math.floor(Math.random() * PLACEHOLDER_OPTIONS.length)],
+    () =>
+      PLACEHOLDER_OPTIONS[
+        Math.floor(Math.random() * PLACEHOLDER_OPTIONS.length)
+      ],
   );
-  const [resolvedCoordinates, setResolvedCoordinates] = useState<Coordinates>(
-    { lat: initialPlaceholder.lat, lon: initialPlaceholder.lon },
-  );
+  const [resolvedCoordinates, setResolvedCoordinates] = useState<Coordinates>({
+    lat: initialPlaceholder.lat,
+    lon: initialPlaceholder.lon,
+  });
 
   function handleGlobeUpdate(coords: Coordinates) {
     setResolvedCoordinates(coords);
@@ -25,7 +31,9 @@ function App() {
   const [confirmedAddress, setConfirmedAddress] = useState("");
   const [confirmedImages, setConfirmedImages] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState("");
-  const [finalSession, setFinalSession] = useState<PropertySession | null>(null);
+  const [finalSession, setFinalSession] = useState<PropertySession | null>(
+    null,
+  );
 
   function handleAddressConfirmed(
     _coords: Coordinates,
@@ -58,21 +66,16 @@ function App() {
   }
 
   function handleReportComplete() {
-    setStep("address");
-    setFinalSession(null);
-    setSessionId("");
-    setConfirmedAddress("");
-    setConfirmedImages([]);
-    setGlobeHidden(false);
+    window.location.href = "/";
   }
 
   const showGlobe = step === "address" && !globeHidden;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-white font-varela">
+    <div className="relative min-h-screen overflow-hidden bg-white font-varela print:overflow-visible">
       {/* Static branding header */}
       <div
-        className="relative z-20 pl-6 pr-6 pt-8 text-[36px] leading-none tracking-[-0.02em] flex text-primary-dark md:pl-[126px] md:pr-[126px] md:pt-[30px] min-[1440px]:pt-[60px]"
+        className="relative z-20 pl-6 pr-6 pt-8 text-[36px] leading-none tracking-[-0.02em] flex text-primary-dark md:pl-[126px] md:pr-[126px] md:pt-[30px] min-[1440px]:pt-[60px] print:hidden"
         aria-label="muve brand"
       >
         <a href="/" className="selection:bg-accent">
@@ -91,10 +94,10 @@ function App() {
       </div>
 
       {/* Page content area */}
-      <div className="relative">
+      <div className="relative print:overflow-visible">
         {/* Address page */}
         <div
-          className={`transition-transform duration-700 ease-in-out ${
+          className={`print:hidden transition-transform duration-700 ease-in-out ${
             step === "address" ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -104,13 +107,13 @@ function App() {
             onGlobeHide={handleGlobeHide}
             onGlobeShow={handleGlobeShow}
             placeholderAddress={initialPlaceholder.address}
-            hidden={step !== "address"}
+            hidden={step !== "address" && step !== "requirements"}
           />
         </div>
 
         {/* Requirements page */}
         <div
-          className={`absolute inset-0 transition-transform duration-700 ease-in-out ${
+          className={`print:hidden absolute inset-0 transition-transform duration-700 ease-in-out ${
             step === "requirements"
               ? "translate-x-0"
               : step === "address"
@@ -127,7 +130,7 @@ function App() {
 
         {/* Analysis page */}
         <div
-          className={`absolute inset-0 transition-transform duration-700 ease-in-out ${
+          className={`print:hidden absolute inset-0 transition-transform duration-700 ease-in-out ${
             step === "analysis"
               ? "translate-x-0"
               : step === "report"
@@ -147,7 +150,7 @@ function App() {
 
         {/* Report page */}
         <div
-          className={`absolute inset-0 transition-transform duration-700 ease-in-out ${
+          className={`absolute inset-0 print:static print:inset-auto transition-transform duration-700 ease-in-out ${
             step === "report" ? "translate-x-0" : "translate-x-full"
           }`}
         >
@@ -162,7 +165,7 @@ function App() {
 
       <BottomGlobe
         target={resolvedCoordinates}
-        className={`transition-transform duration-700 ease-in-out ${
+        className={`print:hidden transition-transform duration-700 ease-in-out ${
           showGlobe ? "translate-y-0" : "translate-y-full"
         }`}
       />
