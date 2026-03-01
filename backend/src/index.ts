@@ -16,6 +16,7 @@ const PORT = process.env.PORT || 3001;
 
 const AI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 const model = AI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const fastModel = AI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 const expensiveModel = AI.getGenerativeModel({ model: "gemini-3.1-pro-preview" })
 
 const supabase = createClient(
@@ -170,7 +171,7 @@ async function processPropertyBackground(
       console.log(`[Session ${sessionId}] Running specialty checks:`, specialtyFlags);
       specialtyResults = await runSpecialtyChecks(
         address || url,
-        model,
+        fastModel,
         specialtyFlags
       );
       console.log(`[Session ${sessionId}] Specialty checks completed: ${specialtyResults.length} results`);
@@ -222,7 +223,7 @@ async function generateAccessibilityChecklist(
   - Include "pollution" ONLY if the user has a high, medically-necessary sensitivity to noise, light, or busy environments that would cause severe distress.
   `;
 
-  const result = await model.generateContent(prompt);
+  const result = await fastModel.generateContent(prompt);
   const checklist = result.response.text();
 
   // Save checklist to database
@@ -427,7 +428,7 @@ async function generateFinalSummary(
   Write a 2-3 sentence overall summary of the accessibility of this house, incorporating both the property issues and any surrounding-area findings. Rate it with a score from 0-100.
   Return strictly JSON: {"score": 85, "summary": "..."}`;
 
-  const summaryResult = await model.generateContent(summaryPrompt);
+  const summaryResult = await fastModel.generateContent(summaryPrompt);
   const rawSummaryText = summaryResult.response.text();
 
   // Parse AI response
@@ -556,7 +557,7 @@ app.post('/api/images', async (req, res) => {
 
     const targetId = Array.from(images)[0].split("/")[6];
 
-    const imagesArray = Array.from(images).filter((v) => v.split("/")[6] == targetId).slice(0,30);
+    const imagesArray = Array.from(images).filter((v) => v.split("/")[6] == targetId).slice(0, 30);
     console.log(imagesArray.length);
     console.log(images)
 

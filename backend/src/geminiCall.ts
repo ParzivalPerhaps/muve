@@ -68,17 +68,22 @@ export async function imageinGroups(images, prompt: string) {
     ];
 
     try {
-        for (let i = 0; i < images.length; i++) {
-            const imageRes = await fetch(images[i]);
-            if (!imageRes.ok) continue;
+        // Fetch all images in parallel for speed
+        const fetchResults = await Promise.allSettled(
+            images.map(async (url: string) => {
+                const imageRes = await fetch(url);
+                if (!imageRes.ok) return null;
+                const arrayBuffer = await imageRes.arrayBuffer();
+                const base64Data = Buffer.from(arrayBuffer).toString("base64");
+                const mimeType = imageRes.headers.get("content-type") || "image/jpeg";
+                return { inlineData: { data: base64Data, mimeType } };
+            })
+        );
 
-            const arrayBuffer = await imageRes.arrayBuffer();
-            const base64Data = Buffer.from(arrayBuffer).toString("base64");
-            const mimeType = imageRes.headers.get("content-type") || "image/jpeg";
-
-            parts.push({
-                inlineData: { data: base64Data, mimeType }
-            });
+        for (const result of fetchResults) {
+            if (result.status === 'fulfilled' && result.value !== null) {
+                parts.push(result.value);
+            }
         }
 
         const result = await model.generateContent({
