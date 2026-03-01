@@ -301,7 +301,7 @@ async function scrapePropertyImages(
         content.match(
           /https:\\u002F\\u002Fssl\.cdn-redfin\.com\\u002Fphoto\\u002F\d+\\u002Fbcsphoto\\u002F\d+\\u002F[a-zA-Z0-9_\.]+\.jpg/g
         ) || [];
-      unicodeUrls.forEach(u => imagesSet.add(u.replace(/\\u002F/g, '/')));
+      unicodeUrls.forEach(u => imagesSet.add((u as string).replace(/\\u002F/g, '/')));
     }
   });
 
@@ -552,13 +552,13 @@ app.post('/api/images', async (req, res) => {
 
       if (content && content.includes('genBcs') && content.includes('ssl.cdn-redfin.com')) {
         const unicodeUrls = content.match(/https:\\u002F\\u002Fssl\.cdn-redfin\.com\\u002Fphoto\\u002F\d+\\u002Fbcsphoto\\u002F\d+\\u002F[a-zA-Z0-9_\.]+\.jpg/g) || [];
-        unicodeUrls.forEach(u => images.add(u.replace(/\\u002F/g, '/')));
+        unicodeUrls.forEach(u => images.add((u as string).replace(/\\u002F/g, '/')));
       }
     });
 
-    const targetId = Array.from(images)[0].split("/")[6];
+    const targetId = (Array.from(images)[0] as string).split("/")[6];
 
-    const imagesArray = Array.from(images).filter((v) => v.split("/")[6] == targetId).slice(0, 30);
+    const imagesArray = Array.from(images).filter((v) => (v as string).split("/")[6] == targetId).slice(0, 30);
     console.log(imagesArray.length);
     console.log(images)
 
