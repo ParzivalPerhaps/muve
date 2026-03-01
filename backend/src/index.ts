@@ -182,8 +182,8 @@ async function processPropertyBackground(
         .eq('id', sessionId);
     }
 
-    // Step 4: Generate final accessibility summary
-    await generateFinalSummary(sessionId, imageAnalysisResults, userNeeds, specialtyResults);
+    // Step 4: Collect all triggered flags and save
+    await collectTriggeredFlags(sessionId, imageAnalysisResults, specialtyResults);
 
     console.log(`[Session ${sessionId}] Analysis completed successfully!`);
 
@@ -398,78 +398,56 @@ async function analyzeSingleBatch(
 }
 
 // ---------------------------------------------------------------------------
-// Step 4: Generate Final Summary
+// Step 4: Collect Triggered Flags
 // ---------------------------------------------------------------------------
-async function generateFinalSummary(
+function toDisplayName(identifier: string): string {
+  return identifier
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+async function collectTriggeredFlags(
   sessionId: string,
   imageResults: Array<{ image_url: string; trigger_found: string[] | null }>,
-  userNeeds: string,
   specialtyResults: SpecialtyResult[] = []
 ): Promise<void> {
-  console.log(`[Session ${sessionId}] Generating final summary...`);
+  console.log(`[Session ${sessionId}] Collecting triggered flags...`);
 
-  // Extract all issues found (flatten arrays)
-  const issuesFound = imageResults
+  const flagsMap: Record<string, string> = {};
+
+  // Collect image-based flags: identifier → display name
+  const rawImageFlags = imageResults
     .map(img => img.trigger_found)
     .filter((trigger): trigger is string[] => trigger !== null)
     .flat();
 
-  const issuesSummary = issuesFound.length > 0
-    ? issuesFound.join(', ')
-    : 'No major issues found.';
+  for (const flag of rawImageFlags) {
+    const key = flag.trim();
+    if (key.length > 0 && !flagsMap[key]) {
+      flagsMap[key] = toDisplayName(key);
+    }
+  }
 
-  // Build specialty findings section
-  const specialtySection = specialtyResults.length > 0
-    ? `\n\nAdditionally, the following surrounding-area assessments were performed:\n${specialtyResults.map(r => `**${r.category}**: ${r.findings}`).join('\n\n')}`
-    : '';
+  // Collect specialty flags: category → findings
+  for (const r of specialtyResults) {
+    if (!flagsMap[r.category]) {
+      flagsMap[r.category] = r.findings;
+    }
+  }
 
-  // Generate summary with AI
-  const summaryPrompt = `A house was analyzed for these user needs: ${userNeeds}. 
-  The following issues were found in the photos: ${issuesSummary}.${specialtySection}
-  Write a 2-3 sentence overall summary of the accessibility of this house, incorporating both the property issues and any surrounding-area findings. Rate it with a score from 0-100.
-  Return strictly JSON: {"score": 85, "summary": "..."}`;
-
-  const summaryResult = await fastModel.generateContent(summaryPrompt);
-  const rawSummaryText = summaryResult.response.text();
-
-  // Parse AI response
-  const finalSummary = parseSummaryResponse(rawSummaryText);
-
-  console.log(`\n[Session ${sessionId}] *** FINAL SUMMARY ***`);
-  console.log(`Score: ${finalSummary.score}`);
-  console.log(`Summary: ${finalSummary.summary}`);
+  console.log(`\n[Session ${sessionId}] *** TRIGGERED FLAGS ***`);
+  console.log(flagsMap);
   console.log(`***************************\n`);
 
-  // Update database with final results
+  // Update database with flags and mark completed
   await supabase
     .from('evaluations')
     .update({
-      final_score: finalSummary.score,
-      final_summary: finalSummary.summary,
+      triggered_flags: flagsMap,
       status: 'completed'
     })
     .eq('id', sessionId);
-}
-
-// ---------------------------------------------------------------------------
-// Helper: Parse Summary Response
-// ---------------------------------------------------------------------------
-function parseSummaryResponse(rawText: string): { score: number | null; summary: string } {
-  try {
-    // Clean up markdown formatting
-    let cleanText = rawText;
-    if (cleanText.startsWith('```json')) cleanText = cleanText.substring(7);
-    if (cleanText.startsWith('```')) cleanText = cleanText.substring(3);
-    if (cleanText.endsWith('```')) cleanText = cleanText.substring(0, cleanText.length - 3);
-
-    return JSON.parse(cleanText.trim());
-  } catch (error) {
-    console.warn('Failed to parse summary JSON, using fallback. Raw:', rawText);
-    return {
-      score: null,
-      summary: rawText
-    };
-  }
 }
 
 // ---------------------------------------------------------------------------
