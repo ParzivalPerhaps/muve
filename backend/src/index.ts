@@ -186,7 +186,11 @@ async function generateAccessibilityChecklist(
 ): Promise<string> {
   console.log(`[Session ${sessionId}] Generating accessibility checklist...`);
 
-  const prompt = `Based on these accessibility needs: "${userNeeds}", generate a concise list of architectural or housing features that would be problematic or serve as triggers. Respond strictly with a comma-separated list of features to look out for.`;
+  const prompt = `Based on these accessibility needs: "${userNeeds}", generate a concise list of architectural or housing features that would be problematic or serve as triggers. Respond strictly with a comma-separated list of features to look out for.
+  At the end of it, generate a list of triggers that could cause the score to go down. Make this section named "TRIGGERS: ", make sure that they are common triggers.
+  Make sure the triggers are simple
+  
+  `;
 
   const result = await model.generateContent(prompt);
   const checklist = result.response.text();
@@ -291,7 +295,9 @@ async function analyzeImagesInBatches(
   console.log(`[Session ${sessionId}] Processing ${images.length} images in ${totalBatches} batches...`);
 
   const analysisPrompt = `Analyze these images. Look for the following accessibility triggers: ${checklist}. 
-  Return a STRICT JSON array of objects. Format: [{"url": "<image_url>", "trigger": "<describe trigger found, or 'None'>"}]`;
+  Return a STRICT JSON array of objects. Format: [{"url": "<image_url>", "trigger": "<describe trigger found, or 'None'>", "pixel_coordinates": <pixel coordinates if possible, if not put null>}]
+  I want you to also make sure the identifiers are in groups. There is a list called TRIGGERS: above, I want you to use just those triggers and make the identifiers those. For the coordinates, make sure its an array of 2 numbers with it being number 1 x number 2
+  `;
 
   for (let i = 0; i < images.length; i += BATCH_SIZE) {
     const batchNum = Math.floor(i / BATCH_SIZE) + 1;
@@ -330,7 +336,7 @@ async function analyzeImagesInBatches(
 async function analyzeSingleBatch(
   imageUrls: string[],
   prompt: string
-): Promise<Array<{ image_url: string; trigger_found: string | null }>> {
+): Promise<Array<{ image_url: string; trigger_found: string | null, pixel_coordinates: string | null  }>> {
   const aiResponseStr = await imageinGroups(imageUrls, prompt);
 
   if (!aiResponseStr) {
@@ -348,7 +354,8 @@ async function analyzeSingleBatch(
   // Map AI results to our format
   return parsedResults.map((result: any, index: number) => ({
     image_url: imageUrls[index],
-    trigger_found: result.trigger !== 'None' ? result.trigger : null
+    trigger_found: result.trigger !== 'None' ? result.trigger : null, 
+    pixel_coordinates: result.pixel_coordinates ? result.pixel_coordinates : null
   }));
 }
 
