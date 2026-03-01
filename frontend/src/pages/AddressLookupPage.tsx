@@ -2,6 +2,7 @@ import { useState } from "react";
 import LocationIcon from "../icons/LocationIcon";
 import { checkAddress } from "../lib/api";
 import { geocodeAddress, type Coordinates } from "../components/BottomGlobe";
+import ExternalLinkIcon from "../icons/ExternalLinkIcon";
 
 interface AddressLookupPageProps {
   onAddressConfirmed: (coords: Coordinates, address: string) => void;
@@ -36,6 +37,17 @@ export default function AddressLookupPage({
     setIsResolving(true);
 
     try {
+      const geocodeResult = await geocodeAddress(address);
+
+      if (!geocodeResult) {
+        setLookupError(
+          "No match found. Try a fuller address or direct coordinates like 37.7749, -122.4194.",
+        );
+        return;
+      }
+
+      setResolvedLabel(geocodeResult.label);
+
       const r = await checkAddress(address);
       console.log(r);
 
@@ -51,17 +63,6 @@ export default function AddressLookupPage({
           });
         });
       }
-
-      const geocodeResult = await geocodeAddress(address);
-
-      if (!geocodeResult) {
-        setLookupError(
-          "No match found. Try a fuller address or direct coordinates like 37.7749, -122.4194.",
-        );
-        return;
-      }
-
-      setResolvedLabel(geocodeResult.label);
     } catch {
       setLookupError(
         "Address lookup is temporarily unavailable. Please try again.",
@@ -88,7 +89,8 @@ export default function AddressLookupPage({
   }
 
   const showConfirmation = images.length > 0;
-  const displayImages = images.slice(0, 3);
+  const displayImages =
+    images.length > 5 ? [images[3], images[1], images[4]] : images.slice(0, 3);
 
   return (
     <main className="min-h-screen bg-white p-0 font-varela relative flex flex-col overflow-hidden">
@@ -186,7 +188,6 @@ export default function AddressLookupPage({
                 })}
               </div>
 
-              {/* Confirmation text */}
               <div
                 className={`mt-6 transition-all duration-500 ease-out ${
                   imagesRevealed
@@ -195,10 +196,11 @@ export default function AddressLookupPage({
                 }`}
                 style={{ transitionDelay: "450ms" }}
               >
-                <p className="text-[14px] text-primary-dark/60">
+                <p className="text-[14px] flex text-primary-dark/60">
                   found on{" "}
-                  <span className="text-accent">
-                    redfin <span className="text-[12px]">&#8599;</span>
+                  <span className="flex cursor-pointer hover:underline decoration-accent">
+                    <span className="text-accent ml-1">redfin</span>
+                    <ExternalLinkIcon className="text-accent ml-1 size-3 m-auto" />
                   </span>
                 </p>
                 <h2 className="mt-1 text-[36px] md:text-[42px] font-normal leading-[1.1] tracking-[-0.01em] text-primary-dark">
