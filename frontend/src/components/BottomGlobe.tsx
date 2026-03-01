@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
+  BackSide,
   CanvasTexture,
   Group,
   LinearFilter,
@@ -327,20 +328,29 @@ function GlobeScene({ target }: { target: Coordinates }) {
 
   return (
     <>
-      <ambientLight intensity={1.08} />
-      <directionalLight intensity={0.72} position={[2.8, 3.2, 4]} />
-      <directionalLight intensity={0.3} position={[-2.4, -1.6, -3]} />
+      <ambientLight intensity={0.9} />
+      {/* Key light — warm, front-right */}
+      <directionalLight intensity={1.0} position={[2.8, 3.2, 4]} />
+      {/* Fill light — soft underside */}
+      <directionalLight intensity={0.2} position={[-2.4, -1.6, -3]} />
+      {/* Rim light — cool blue from behind for depth */}
+      <directionalLight
+        intensity={0.35}
+        position={[-4, 1, -5]}
+        color="#a8c8ff"
+      />
 
       {/* Only render once the real texture is ready — no blue flash */}
       {globeTexture && (
         <group ref={globeGroupRef} position={globePosition} scale={globeScale}>
+          {/* Globe surface */}
           <mesh>
             <sphereGeometry args={[1, 200, 200]} />
             <meshStandardMaterial
               map={globeTexture}
               color="#ffffff"
               metalness={0}
-              roughness={0.88}
+              roughness={0.72}
               {...(displacementMap
                 ? {
                     displacementMap,
@@ -350,6 +360,19 @@ function GlobeScene({ target }: { target: Coordinates }) {
             />
           </mesh>
 
+          {/* Atmosphere shell — BackSide creates limb-brightening rim glow */}
+          <mesh>
+            <sphereGeometry args={[1.01, 64, 64]} />
+            <meshBasicMaterial
+              color="#c2deff"
+              transparent
+              opacity={0.13}
+              depthWrite={false}
+              side={BackSide}
+            />
+          </mesh>
+
+          {/* Location marker */}
           <mesh position={markerPosition}>
             <sphereGeometry args={[0.005, 24, 24]} />
             <meshStandardMaterial

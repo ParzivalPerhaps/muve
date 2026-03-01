@@ -1,12 +1,9 @@
 import { useState } from "react";
-import AddressLookupPage from "./pages/AddressLookupPage";
+import AddressLookupPage, { PLACEHOLDER_OPTIONS } from "./pages/AddressLookupPage";
 import RequirementsEntryPage from "./pages/RequirementsEntryPage";
 import AnalysisPage from "./pages/AnalysisPage";
 import ReportPage from "./pages/ReportPage";
-import BottomGlobe, {
-  DEFAULT_COORDINATES,
-  type Coordinates,
-} from "./components/BottomGlobe";
+import BottomGlobe, { type Coordinates } from "./components/BottomGlobe";
 import type { PropertySession } from "./lib/api";
 
 type Step = "address" | "requirements" | "analysis" | "report";
@@ -14,8 +11,12 @@ type Step = "address" | "requirements" | "analysis" | "report";
 function App() {
   const [step, setStep] = useState<Step>("address");
   const [globeHidden, setGlobeHidden] = useState(false);
-  const [resolvedCoordinates, setResolvedCoordinates] =
-    useState<Coordinates>(DEFAULT_COORDINATES);
+  const [initialPlaceholder] = useState(
+    () => PLACEHOLDER_OPTIONS[Math.floor(Math.random() * PLACEHOLDER_OPTIONS.length)],
+  );
+  const [resolvedCoordinates, setResolvedCoordinates] = useState<Coordinates>(
+    { lat: initialPlaceholder.lat, lon: initialPlaceholder.lon },
+  );
 
   function handleGlobeUpdate(coords: Coordinates) {
     setResolvedCoordinates(coords);
@@ -102,6 +103,7 @@ function App() {
             onAddressConfirmed={handleAddressConfirmed}
             onGlobeHide={handleGlobeHide}
             onGlobeShow={handleGlobeShow}
+            placeholderAddress={initialPlaceholder.address}
             hidden={step !== "address"}
           />
         </div>
@@ -138,6 +140,7 @@ function App() {
               images={confirmedImages}
               sessionId={sessionId}
               onComplete={handleAnalysisComplete}
+              hidden={step === "report"}
             />
           )}
         </div>

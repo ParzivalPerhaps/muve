@@ -432,7 +432,7 @@ async function collectTriggeredFlags(
   sessionId: string,
   imageResults: Array<{ image_url: string; trigger_found: string[] | null }>,
   specialtyResults: SpecialtyResult[] = [],
-  specialtyFlags: { elevation: boolean; proximity: boolean; pollution: boolean; streetLighting: boolean } = { elevation: false, proximity: false, pollution: false, streetLighting: false }
+  specialtyFlags: { elevation: boolean; proximity: boolean; pollution: boolean; streetLighting: boolean; sidewalk: boolean; airQuality: boolean; emergencyServices: boolean } = { elevation: false, proximity: false, pollution: false, streetLighting: false, sidewalk: false, airQuality: false, emergencyServices: false }
 ): Promise<void> {
   console.log(`[Session ${sessionId}] Collecting triggered flags...`);
 
@@ -484,11 +484,11 @@ async function collectTriggeredFlags(
   const w = await supabase
     .from('evaluations')
     .update({
-      //triggered_flags: flagsMap,
+      triggered_flags: flagsMap,
       final_score: score,
       status: 'completed'
     })
-    .eq('id', sessionId); 
+    .eq('id', sessionId);
 
     console.log(w);
     

@@ -9,8 +9,38 @@ interface AddressLookupPageProps {
   onGlobeHide: () => void;
   onGlobeShow: () => void;
   handleGlobeUpdate: (coords: Coordinates) => void;
+  placeholderAddress: string;
   hidden?: boolean;
 }
+
+export type PlaceholderOption = {
+  address: string;
+  lat: number;
+  lon: number;
+};
+
+export const PLACEHOLDER_OPTIONS: PlaceholderOption[] = [
+  { address: "1600 Pennsylvania Avenue, Washington, D.C.",              lat: 38.8977,  lon: -77.0366  },
+  { address: "112 Ocean Avenue, Amityville, New York",                  lat: 40.6731,  lon: -73.4154  },
+  { address: "1428 Elm Street, Springwood, Ohio",                       lat: 39.9612,  lon: -82.9988  },
+  { address: "4 Privet Drive, Little Whinging, Surrey",                 lat: 51.4082,  lon:  -0.7516  },
+  { address: "742 Evergreen Terrace, Springfield",                      lat: 44.0462,  lon: -123.0220 },
+  { address: "221B Baker Street, London",                               lat: 51.5237,  lon:  -0.1585  },
+  { address: "1313 Mockingbird Lane, Mockingbird Heights",              lat: 34.1341,  lon: -118.3534 },
+  { address: "10880 Malibu Point, Malibu, California",                  lat: 34.0019,  lon: -118.8068 },
+  { address: "344 Clinton Street, Apartment 3B, New York City",         lat: 40.7128,  lon: -74.0060  },
+  { address: "90 Bedford Street, Apartment 4A, New York City",          lat: 40.7328,  lon: -74.0060  },
+  { address: "1407 Graymalkin Lane, Salem Center, New York",            lat: 41.3476,  lon: -73.7478  },
+  { address: "2630 Hegal Place, Apartment 42, Alexandria, Virginia",    lat: 38.8048,  lon: -77.0469  },
+  { address: "698 Candlewood Lane, Cabot Cove, Maine",                  lat: 44.1853,  lon: -69.0689  },
+  { address: "7 Savile Row, Burlington Gardens, London",                lat: 51.5104,  lon:  -0.1412  },
+  { address: "12 Grimmauld Place, London",                              lat: 51.5305,  lon:  -0.1097  },
+  { address: "1888 Hillcrest Road, Hollywood Hills, California",        lat: 34.1341,  lon: -118.3215 },
+  { address: "124 Conch Street, Bikini Bottom",                         lat: 11.5456,  lon:  165.3835 },
+  { address: "0001 Cemetery Lane",                                      lat: 40.9176,  lon: -73.8502  },
+  { address: "1640 Riverside Drive, Hill Valley, California",           lat: 38.2327,  lon: -122.6367 },
+  { address: "2311 North Los Robles Avenue, Apartment 4A, Pasadena, California", lat: 34.1478, lon: -118.1445 },
+];
 
 const IMAGE_CARDS = [
   { rotate: -6, translateX: -350, translateY: 20, zIndex: 1 },
@@ -23,6 +53,7 @@ export default function AddressLookupPage({
   onGlobeHide,
   onGlobeShow,
   handleGlobeUpdate,
+  placeholderAddress,
   hidden = false,
 }: AddressLookupPageProps) {
   const [address, setAddress] = useState("");
@@ -133,7 +164,7 @@ export default function AddressLookupPage({
               }`}
               value={address}
               onChange={(event) => setAddress(event.target.value)}
-              placeholder="308 Negra Arroyo Lane"
+              placeholder={placeholderAddress}
               disabled={showConfirmation || isResolving}
               tabIndex={showConfirmation ? -1 : 0}
             />

@@ -10,6 +10,7 @@ interface AnalysisPageProps {
   images: string[];
   sessionId: string;
   onComplete?: (session: PropertySession) => void;
+  hidden?: boolean;
 }
 
 /* ---------------------------------------------------------------------------
@@ -55,6 +56,7 @@ export default function AnalysisPage({
   images,
   sessionId,
   onComplete,
+  hidden = false,
 }: AnalysisPageProps) {
   const [sessionData, setSessionData] = useState<PropertySession | null>(null);
   const [revealedCount, setRevealedCount] = useState(0);
@@ -143,7 +145,7 @@ export default function AnalysisPage({
         </p>
 
         {/* ---- Fanned cards scattered across the width -------------------- */}
-        <div className="relative mt-8 w-full h-[380px] md:h-[480px]">
+        <div className={`relative mt-8 w-full h-[380px] md:h-[480px] ${hidden ? "hidden md:block" : ""}`}>
           {revealedResults.map((result, i) => {
             const card = cardTransforms[i];
 

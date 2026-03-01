@@ -8,13 +8,6 @@ interface ReportPageProps {
   onComplete?: () => void;
 }
 
-const SPECIALTY_TRIGGER_VALUES = new Set([
-  "steep_surrounding_terrain",
-  "no_nearby_transportation",
-  "high_noise_or_light_pollution",
-  "bad_street_lighting",
-]);
-
 function StackedThumbs({ urls }: { urls: string[] }) {
   const SHOW = 2;
   const shown = urls.slice(0, SHOW);
@@ -69,14 +62,12 @@ export default function ReportPage({
     }
   }
 
-  const visualFlags = Object.entries(triggeredFlags).filter(
-    ([key]) => !SPECIALTY_TRIGGER_VALUES.has(key),
-  );
+  const visualFlags = Object.entries(triggeredFlags);
 
   return (
-    <section className="relative z-10 flex-1 pb-24">
-      {/* Header + score — constrained width */}
-      <div className="px-6 md:pl-[126px] md:pr-[126px] mt-12 md:mt-[60px] min-[1440px]:mt-[106px]">
+    <section className="relative z-10 h-full flex flex-col">
+      {/* Header + score — pinned, never scrolls */}
+      <div className="flex-shrink-0 px-6 md:pl-[126px] md:pr-[126px] mt-12 md:mt-[60px] min-[1440px]:mt-[106px]">
         <h1 className="m-0 flex items-start gap-3 text-[28px] sm:text-[36px] md:text-[48px] font-normal selection:bg-accent leading-[1.04] tracking-[-0.01em] text-primary-dark">
           <LocationIcon
             className="h-[20px] w-[20px] md:h-[24px] md:w-[24px] shrink-0 mt-[10px] md:mt-[12px]"
@@ -99,8 +90,11 @@ export default function ReportPage({
         </div>
       </div>
 
-      {/* Divider — full width */}
-      <hr className="mt-6 w-2/3 mr-auto ml-32 border-primary-dark/15" />
+      {/* Divider — full width, pinned */}
+      <hr className="flex-shrink-0 mt-6 w-2/3 mr-auto ml-32 border-primary-dark/15" />
+
+      {/* Scrollable area — columns + buttons */}
+      <div className="flex-1 overflow-y-auto">
 
       {/* Two-column findings */}
       <div className="mt-8 px-8 md:pl-[126px] md:pr-[200px] grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-24">
@@ -153,7 +147,7 @@ export default function ReportPage({
       </div>
 
       {/* Bottom actions */}
-      <div className="mt-16 px-6 md:pl-[126px] flex gap-3">
+      <div className="mt-16 pb-16 px-6 md:pl-[126px] flex gap-3">
         <button
           type="button"
           className="rounded-[10px] cursor-pointer border border-accent bg-transparent px-[24px] py-[8px] text-[15px] leading-none text-accent hover:bg-accent/5 transition-all duration-75"
@@ -168,6 +162,8 @@ export default function ReportPage({
           complete
         </button>
       </div>
+
+      </div>{/* end scrollable area */}
     </section>
   );
 }
