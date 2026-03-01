@@ -129,7 +129,6 @@ app.post('/api/images', async (req, res) => {
       if (!targetUrl) {
         return res.status(404).json({ error: "Cant get url from address" });
       }
-
     }
 
     //was trying to get content too soon so (could make it lower (probably))
@@ -256,7 +255,7 @@ app.post('/api/triggersFromImmage/', async (_req, res) => {
 
 
 app.listen(PORT, () => {
-  console.log("muving")
+  console.log(`muving on localhost:${PORT}`)
 })
 
 export default app
