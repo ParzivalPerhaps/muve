@@ -29,6 +29,7 @@ export default function AddressLookupPage({
   const [images, setImages] = useState<string[]>([]);
   const [imagesRevealed, setImagesRevealed] = useState(false);
   const [resolvedLabel, setResolvedLabel] = useState("");
+  const [targetUrl, setTargetUrl] = useState("");
 
   async function handleConfirmAddress() {
     if (isResolving || address.trim().length === 0) {
@@ -54,6 +55,7 @@ export default function AddressLookupPage({
       const r = await checkAddress(address);
       console.log(r);
 
+      const targetUrl = r?.targetUrl;
       const imagesArray: string[] = r?.imagesArray ?? [];
 
       if (imagesArray.length > 0) {
@@ -65,6 +67,10 @@ export default function AddressLookupPage({
             setImagesRevealed(true);
           });
         });
+      }
+
+      if (targetUrl) {
+        setTargetUrl(targetUrl);
       }
     } catch {
       setLookupError(
@@ -116,7 +122,7 @@ export default function AddressLookupPage({
           {!showConfirmation && (
             <input
               id="address-input"
-              className={`block w-full rounded-[10px] border px-3 py-[14px] text-[18px] leading-[1.2] text-primary-dark placeholder:text-[#8e9291] focus:border-[#737675] selection:bg-accent focus:outline-none md:rounded-[14px] md:px-5 md:py-4 transition-all duration-500 ease-in-out ${
+              className={`block w-full border-b bg-transparent px-0 py-[10px] text-[16px] leading-[1.4] text-primary-dark placeholder:text-[#8e9291] focus:border-[#737675] selection:bg-accent focus:outline-none transition-all duration-500 ease-in-out ${
                 showConfirmation
                   ? "opacity-0 scale-y-0 h-0 py-0 border-transparent overflow-hidden"
                   : "opacity-100 scale-y-100 border-[#8c908f]"
@@ -203,10 +209,13 @@ export default function AddressLookupPage({
             >
               <p className="text-[14px] flex text-primary-dark/60">
                 found on{" "}
-                <span className="flex cursor-pointer hover:underline decoration-accent">
+                <a
+                  href={targetUrl}
+                  className="flex cursor-pointer hover:underline decoration-accent"
+                >
                   <span className="text-accent ml-1">redfin</span>
                   <ExternalLinkIcon className="text-accent ml-1 size-3 m-auto" />
-                </span>
+                </a>
               </p>
               <h2 className="mt-1 text-[36px] md:text-[42px] font-normal leading-[1.1] tracking-[-0.01em] text-primary-dark">
                 does this look right?

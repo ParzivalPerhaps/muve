@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   CanvasTexture,
   Group,
+  LinearFilter,
   MathUtils,
   Quaternion,
   SRGBColorSpace,
@@ -32,7 +33,8 @@ export const DEFAULT_COORDINATES: Coordinates = {
   lon: -117.879669,
 };
 
-const GLOBE_TEXTURE_URL = "/globe_texture_5.png";
+const GLOBE_TEXTURE_URL = "/eeee.jpg";
+const DISPLACEMENT_MAP_URL = "/GDEM-10km-BW.png";
 const FRONT_BIAS_VECTOR = new Vector3(0, 0.93, 1).normalize();
 const NORTH_POLE_VECTOR = new Vector3(0, 1, 0);
 const WORLD_UP_VECTOR = new Vector3(0, 1, 0);
@@ -172,8 +174,8 @@ function latLonToVector3(lat: number, lon: number, radius = 1): Vector3 {
   const longitudeRadians = MathUtils.degToRad(lon);
 
   return new Vector3(
-     radius * Math.cos(latitudeRadians) * Math.cos(longitudeRadians),
-     radius * Math.sin(latitudeRadians),
+    radius * Math.cos(latitudeRadians) * Math.cos(longitudeRadians),
+    radius * Math.sin(latitudeRadians),
     -radius * Math.cos(latitudeRadians) * Math.sin(longitudeRadians),
   );
 }
@@ -229,11 +231,13 @@ function GlobeScene({ target }: { target: Coordinates }) {
   const globeGroupRef = useRef<Group>(null);
   const { size } = useThree();
   const textureRef = useRef<Texture | null>(null);
+  const displacementRef = useRef<Texture | null>(null);
   const [globeTexture, setGlobeTexture] = useState<Texture>(() => {
     const fallbackTexture = createFallbackGlobeTexture();
     textureRef.current = fallbackTexture;
     return fallbackTexture;
   });
+  const [displacementMap, setDisplacementMap] = useState<Texture | null>(null);
 
   const markerPosition = useMemo(
     () => latLonToVector3(target.lat, target.lon, 1.02),
@@ -243,10 +247,10 @@ function GlobeScene({ target }: { target: Coordinates }) {
   const isSmallViewport = size.width < 768;
   const globePosition: [number, number, number] = isSmallViewport
     ? [0, -1.72, 0]
-    : [0, -1.65, 0];
-  const globeScale: [number, number, number] = isSmallViewport
-    ? [3.72, 3, 3.72]
-    : [4.05, 3, 4.05];
+    : [0, -1.8, 0];
+    const globeScale: [number, number, number] = isSmallViewport
+    ? [3.2, 3.2, 3.2]
+    : [3.5, 3.5, 3.5];
 
   const targetQuaternion = useMemo(
     () => toNorthUpTargetQuaternion({ lat: target.lat, lon: target.lon }),
@@ -289,8 +293,53 @@ function GlobeScene({ target }: { target: Coordinates }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const loader = new TextureLoader();
+
+    loader.load(
+      DISPLACEMENT_MAP_URL,
+      (loadedTexture) => {
+        if (cancelled) {
+          loadedTexture.dispose();
+          return;
+        }
+
+        // Downsample to a small canvas to naturally blur/round the heightmap
+        const blurCanvas = document.createElement("canvas");
+        const blurSize = 256;
+        blurCanvas.width = blurSize * 2;
+        blurCanvas.height = blurSize;
+        const ctx = blurCanvas.getContext("2d");
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(loadedTexture.image, 0, 0, blurSize * 2, blurSize);
+        }
+
+        const blurredTexture = new CanvasTexture(blurCanvas);
+        blurredTexture.minFilter = LinearFilter;
+        blurredTexture.magFilter = LinearFilter;
+        blurredTexture.needsUpdate = true;
+
+        loadedTexture.dispose();
+        displacementRef.current = blurredTexture;
+        setDisplacementMap(blurredTexture);
+      },
+      undefined,
+      () => {
+        // Displacement map optional — globe still works without it.
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     return () => {
       textureRef.current?.dispose();
+      displacementRef.current?.dispose();
     };
   }, []);
 
@@ -300,7 +349,7 @@ function GlobeScene({ target }: { target: Coordinates }) {
       return;
     }
 
-    const smoothing = 1 - Math.exp(-delta * 3.2);
+    const smoothing = 1 - Math.exp(-delta * 1.2);
     globeGroup.quaternion.slerp(targetQuaternion, smoothing);
   });
 
@@ -312,21 +361,27 @@ function GlobeScene({ target }: { target: Coordinates }) {
 
       <group ref={globeGroupRef} position={globePosition} scale={globeScale}>
         <mesh>
-          <sphereGeometry args={[1, 96, 96]} />
+          <sphereGeometry args={[1, 200, 200]} />
           <meshStandardMaterial
             map={globeTexture}
             color="#ffffff"
             metalness={0}
             roughness={0.88}
+            {...(displacementMap
+              ? {
+                  displacementMap,
+                  displacementScale: 0.015,
+                }
+              : {})}
           />
         </mesh>
 
-      {/* Remove for aura light thingy */}
+        {/* Remove for aura light thingy */}
         <mesh>
           <sphereGeometry args={[1.03, 96, 96]} />
           <meshStandardMaterial
-            color="#9fded9"
-            emissive="#9fded9"
+            color="#ffffff"
+            emissive="#ffffff"
             emissiveIntensity={0.1}
             transparent
             opacity={0.12}
