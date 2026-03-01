@@ -42,3 +42,10 @@
 #root {
   min-height: 100vh;
 }
+
+/* Accent-coloured text gets a dark selection highlight instead of green-on-green */
+.text-accent::selection,
+.text-accent *::selection {
+  background-color: var(--color-primary-dark);
+  color: #ffffff;
+}

@@ -5,7 +5,7 @@
     "three": "^0.183.2"
   },
   "scripts": {
-    "deploy": "cd backend && vercel && cd ../frontend && vercel"
+    "deploy": "cd backend && vercel --prod && cd ../frontend && vercel --prod"
   },
   "devDependencies": {
     "@types/three": "^0.183.1"

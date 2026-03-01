@@ -87,7 +87,7 @@ ${elevations.map((e, i) => `Point ${i + 1}: ${e.toFixed(1)}m`).join('\n')}
 
 The elevation difference across these points is ${elevDiff.toFixed(1)} meters.
 
-Based on this data, write a concise 2-3 sentence assessment of how challenging the surrounding terrain would be for someone with mobility issues (wheelchair, walker, etc.). Focus on slope steepness, hill challenges, and walkability. Be practical and specific.`;
+Based on this data, write a CONCISE 1-2 sentence assessment of how challenging the surrounding terrain would be for someone with mobility issues (wheelchair, walker, etc.). Focus on slope steepness, hill challenges, and walkability. Be practical and specific.`;
 
     const result = await model.generateContent(prompt);
     const findings = result.response.text();
@@ -170,7 +170,7 @@ async function checkProximityServices(
 Nearby services found (within ~1km, hospitals within ~1.5km):
 ${poiSummary}
 
-Based on this data, write a concise 2-3 sentence assessment of how convenient the surrounding area is for someone with mobility challenges who depends on nearby public transit, healthcare, and essential services. Be specific about what's available and any gaps.`;
+Based on this data, write a CONCISE 1-2 sentence assessment of how convenient the surrounding area is for someone with mobility challenges who depends on nearby public transit, healthcare, and essential services. Be specific about what's available and any gaps.`;
 
     const result = await model.generateContent(prompt);
     const findings = result.response.text();
@@ -251,7 +251,7 @@ async function checkPollutionLevels(
 Potential noise and light pollution sources found nearby:
 ${pollutionSummary}
 
-Based on this data, write a concise 2-3 sentence assessment of the noise and light pollution levels in this area. Consider how it would affect someone who is sensitive to loud noises, bright lights, or busy/stimulating environments (e.g., autism spectrum, PTSD, sensory processing disorders). Be practical and specific.`;
+Based on this data, write a CONCISE 1-2 sentence assessment of the noise and light pollution levels in this area. Consider how it would affect someone who is sensitive to loud noises, bright lights, or busy/stimulating environments (e.g., autism spectrum, PTSD, sensory processing disorders). Be practical and specific.`;
 
     const result = await model.generateContent(prompt);
     const findings = result.response.text();
@@ -304,7 +304,7 @@ async function checkStreetLighting(
 Street lighting information found nearby:
 ${lightingSummary}
 
-Based on this data, write a concise 2-3 sentence assessment of the street lighting in the immediate vicinity. Consider how adequate lighting might impact safety, navigation, and comfort for individuals with visual impairments or those who rely on clear visibility, especially during nighttime. Be practical and specific.`;
+Based on this data, write a CONCISE 1-2 sentence assessment of the street lighting in the immediate vicinity. Consider how adequate lighting might impact safety, navigation, and comfort for individuals with visual impairments or those who rely on clear visibility, especially during nighttime. Be practical and specific.`;
 
     const result = await model.generateContent(prompt);
     const findings = result.response.text();
@@ -377,7 +377,7 @@ async function checkSidewalkInfrastructure(
 Pedestrian infrastructure found within ~500m of the property:
 ${sidewalkSummary}
 
-Based on this data, write a concise 2-3 sentence assessment of how wheelchair- and mobility-device-friendly the immediate pedestrian environment is. Focus on the presence or absence of curb cuts, accessible crossings, and continuous footway coverage. Be practical and specific.`;
+Based on this data, write a CONCISE 1-2 sentence assessment of how wheelchair- and mobility-device-friendly the immediate pedestrian environment is. Focus on the presence or absence of curb cuts, accessible crossings, and continuous footway coverage. Be practical and specific.`;
 
     const result = await model.generateContent(prompt);
     const findings = result.response.text();
@@ -430,7 +430,7 @@ async function checkAirQuality(
 Air quality readings from the nearest monitoring stations:
 ${airQualitySummary}
 
-Based on this data, write a concise 2-3 sentence assessment of the local air quality and its potential impact on residents with respiratory conditions (asthma, COPD, allergies) or cardiovascular sensitivities. Reference specific pollutant levels where available, and note if data coverage is limited. Be practical and specific.`;
+Based on this data, write a CONCISE 1-2 sentence assessment of the local air quality and its potential impact on residents with respiratory conditions (asthma, COPD, allergies) or cardiovascular sensitivities. Reference specific pollutant levels where available, and note if data coverage is limited. Be practical and specific.`;
 
     const result = await model.generateContent(prompt);
     const findings = result.response.text();
@@ -503,7 +503,7 @@ async function checkEmergencyServices(
 Emergency services found near the property:
 ${emergencySummary}
 
-Based on this data, write a concise 2-3 sentence assessment of how well-served the area is by emergency services. Consider the implications for residents who live alone with disabilities, have chronic medical conditions, or require rapid emergency response. Be practical and specific.`;
+Based on this data, write a CONCISE 1-2 sentence assessment of how well-served the area is by emergency services. Consider the implications for residents who live alone with disabilities, have chronic medical conditions, or require rapid emergency response. Be practical and specific.`;
 
     const result = await model.generateContent(prompt);
     const findings = result.response.text();

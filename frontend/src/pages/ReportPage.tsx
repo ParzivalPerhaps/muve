@@ -62,7 +62,9 @@ export default function ReportPage({
     }
   }
 
-  const visualFlags = Object.entries(triggeredFlags);
+  const visualFlags = Object.entries(triggeredFlags).filter(
+    ([key]) => (flagImagesMap[key]?.length ?? 0) > 0,
+  );
 
   return (
     <section className="relative z-10 h-full flex flex-col">
@@ -93,8 +95,9 @@ export default function ReportPage({
       {/* Divider — full width, pinned */}
       <hr className="flex-shrink-0 mt-6 w-2/3 mr-auto ml-32 border-primary-dark/15" />
 
-      {/* Scrollable area — columns + buttons */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Scrollable area */}
+      <div className="flex-1 relative overflow-hidden">
+      <div className="h-full overflow-y-auto pb-10">
 
       {/* Two-column findings */}
       <div className="mt-8 px-8 md:pl-[126px] md:pr-[200px] grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-24">
@@ -146,8 +149,12 @@ export default function ReportPage({
         </div>
       </div>
 
-      {/* Bottom actions */}
-      <div className="mt-16 pb-16 px-6 md:pl-[126px] flex gap-3">
+      </div>{/* end inner scroll */}
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white/70 to-transparent" />
+      </div>{/* end scrollable area */}
+
+      {/* Bottom actions — pinned, never scrolls */}
+      <div className="flex-shrink-0 py-6 px-6 md:pl-[126px] flex gap-3">
         <button
           type="button"
           className="rounded-[10px] cursor-pointer border border-accent bg-transparent px-[24px] py-[8px] text-[15px] leading-none text-accent hover:bg-accent/5 transition-all duration-75"
@@ -162,8 +169,6 @@ export default function ReportPage({
           complete
         </button>
       </div>
-
-      </div>{/* end scrollable area */}
     </section>
   );
 }

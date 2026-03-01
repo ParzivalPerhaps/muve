@@ -607,7 +607,7 @@ app.post('/api/listfromlist/', async (_req, res) => {
   {
   "score": <number 0-100, where 100 is reasonably accessible>,
   "risks": [
-      { "issue": "<what the problem is>", "severity": "<low|medium|high>" }
+      { "issue": "<what the problem is (keep this simple and relevant to accessibility)>", "severity": "<low|medium|high>" }
   ],
   "summary": "<2-3 sentence overall description of accessibility for this person, simple english since our user target is likely older.>"
   }
