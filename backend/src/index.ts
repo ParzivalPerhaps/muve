@@ -368,7 +368,7 @@ app.post('/api/images', async (req, res) => {
     
 
    
-    const imagesArray = Array.from(images);
+    const imagesArray = Array.from(images).filter((v) => v.split("/")[6] == targetId);
     console.log(imagesArray.length);
     console.log(images)
 

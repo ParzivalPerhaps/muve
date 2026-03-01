@@ -29,6 +29,7 @@ export default function AddressLookupPage({
   const [images, setImages] = useState<string[]>([]);
   const [imagesRevealed, setImagesRevealed] = useState(false);
   const [resolvedLabel, setResolvedLabel] = useState("");
+  const [targetUrl, setTargetUrl] = useState("");
 
   async function handleConfirmAddress() {
     if (isResolving || address.trim().length === 0) {
@@ -54,6 +55,7 @@ export default function AddressLookupPage({
       const r = await checkAddress(address);
       console.log(r);
 
+      const targetUrl = r?.targetUrl;
       const imagesArray: string[] = r?.imagesArray ?? [];
 
       if (imagesArray.length > 0) {
@@ -65,6 +67,10 @@ export default function AddressLookupPage({
             setImagesRevealed(true);
           });
         });
+      }
+
+      if (targetUrl) {
+        setTargetUrl(targetUrl);
       }
     } catch {
       setLookupError(
@@ -203,10 +209,13 @@ export default function AddressLookupPage({
             >
               <p className="text-[14px] flex text-primary-dark/60">
                 found on{" "}
-                <span className="flex cursor-pointer hover:underline decoration-accent">
+                <a
+                  href={targetUrl}
+                  className="flex cursor-pointer hover:underline decoration-accent"
+                >
                   <span className="text-accent ml-1">redfin</span>
                   <ExternalLinkIcon className="text-accent ml-1 size-3 m-auto" />
-                </span>
+                </a>
               </p>
               <h2 className="mt-1 text-[36px] md:text-[42px] font-normal leading-[1.1] tracking-[-0.01em] text-primary-dark">
                 does this look right?
