@@ -311,10 +311,10 @@ async function analyzeImagesInBatches(
   sessionId: string,
   images: string[],
   checklist: string
-): Promise<Array<{ image_url: string; trigger_found: string | null }>> {
+): Promise<Array<{ image_url: string; trigger_found: string[] | null }>> {
   const BATCH_SIZE = 1;
   const BATCH_DELAY_MS = 1000;
-  const accumulatedResults: Array<{ image_url: string; trigger_found: string | null }> = [];
+  const accumulatedResults: Array<{ image_url: string; trigger_found: string[] | null }> = [];
 
   const totalBatches = Math.ceil(images.length / BATCH_SIZE);
   console.log(`[Session ${sessionId}] Processing ${images.length} images in ${totalBatches} batches...`);
@@ -362,7 +362,7 @@ async function analyzeImagesInBatches(
 async function analyzeSingleBatch(
   imageUrls: string[],
   prompt: string
-): Promise<Array<{ image_url: string; trigger_found: string | null, pixel_coordinates: string | null }>> {
+): Promise<Array<{ image_url: string; trigger_found: string[] | null, pixel_coordinates: string | null }>> {
   const aiResponseStr = await imageinGroups(imageUrls, prompt);
 
   if (!aiResponseStr) {
@@ -380,7 +380,9 @@ async function analyzeSingleBatch(
   // Map AI results to our format
   return parsedResults.map((result: any, index: number) => ({
     image_url: imageUrls[index],
-    trigger_found: result.trigger !== 'None' ? result.trigger : null,
+    trigger_found: result.trigger !== 'None'
+      ? result.trigger.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0)
+      : null,
     pixel_coordinates: result.pixel_coordinates ? result.pixel_coordinates : null
   }));
 }
@@ -390,16 +392,17 @@ async function analyzeSingleBatch(
 // ---------------------------------------------------------------------------
 async function generateFinalSummary(
   sessionId: string,
-  imageResults: Array<{ image_url: string; trigger_found: string | null }>,
+  imageResults: Array<{ image_url: string; trigger_found: string[] | null }>,
   userNeeds: string,
   specialtyResults: SpecialtyResult[] = []
 ): Promise<void> {
   console.log(`[Session ${sessionId}] Generating final summary...`);
 
-  // Extract all issues found
+  // Extract all issues found (flatten arrays)
   const issuesFound = imageResults
     .map(img => img.trigger_found)
-    .filter(trigger => trigger !== null);
+    .filter((trigger): trigger is string[] => trigger !== null)
+    .flat();
 
   const issuesSummary = issuesFound.length > 0
     ? issuesFound.join(', ')
