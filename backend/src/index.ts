@@ -170,6 +170,11 @@ async function processPropertyBackground(
         specialtyFlags
       );
       console.log(`[Session ${sessionId}] Specialty checks completed: ${specialtyResults.length} results`);
+
+      await supabase
+        .from('evaluations')
+        .update({ specialty_results: specialtyResults })
+        .eq('id', sessionId);
     }
 
     // Step 4: Generate final accessibility summary
@@ -307,8 +312,8 @@ async function analyzeImagesInBatches(
   images: string[],
   checklist: string
 ): Promise<Array<{ image_url: string; trigger_found: string | null }>> {
-  const BATCH_SIZE = 5;
-  const BATCH_DELAY_MS = 2000;
+  const BATCH_SIZE = 1;
+  const BATCH_DELAY_MS = 1000;
   const accumulatedResults: Array<{ image_url: string; trigger_found: string | null }> = [];
 
   const totalBatches = Math.ceil(images.length / BATCH_SIZE);
@@ -316,7 +321,8 @@ async function analyzeImagesInBatches(
 
   const analysisPrompt = `Analyze these images. Look for the following accessibility triggers: ${checklist}. 
   Return a STRICT JSON array of objects. Format: [{"url": "<image_url>", "trigger": "<describe trigger found, or 'None'>", "pixel_coordinates": <pixel coordinates if possible, if not put null>}]
-  I want you to also make sure the identifiers are in groups. There is a list called TRIGGERS: above, I want you to use just those triggers and make the identifiers those. For the coordinates, make sure its an array of 2 numbers with it being number 1 x number 2
+  I want you to also make sure the identifiers are in groups. There is a list called TRIGGERS: above, I want you to use just those triggers and make the identifiers those. For the coordinates, make sure its an array of 2 numbers with it being number 1 x number 2.
+  Can you also make it so there can be multiple triggers per image, with it being separated by a comma, only do this if needed
   `;
 
   for (let i = 0; i < images.length; i += BATCH_SIZE) {
