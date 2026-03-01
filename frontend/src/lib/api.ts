@@ -44,6 +44,7 @@ export type AnalyzePropertyRequest = {
   address?: string;
   url?: string;
   userNeeds: string;
+  images?: string[];
 };
 
 export type AnalyzePropertyResponse = {
@@ -93,10 +94,15 @@ export type ListFromListResponse = {
 export async function analyzeProperty(
   body: AnalyzePropertyRequest,
 ): Promise<AnalyzePropertyResponse> {
+  const normalizedBody: AnalyzePropertyRequest = {
+    ...body,
+    images: body.images ?? [],
+  };
+
   return doFetch<AnalyzePropertyResponse>("/api/analyzeProperty", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(normalizedBody),
   });
 }
 

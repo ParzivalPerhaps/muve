@@ -35,7 +35,7 @@ function App() {
 
   function handleEvaluationStarted(id: string) {
     setSessionId(id);
-    setStep("analysis");
+    setTimeout(() => setStep("analysis"), 3000);
   }
 
   function handleGlobeHide() {

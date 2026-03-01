@@ -39,62 +39,6 @@ const FRONT_BIAS_VECTOR = new Vector3(0, 1.15, 1).normalize();
 const NORTH_POLE_VECTOR = new Vector3(0, 1, 0);
 const WORLD_UP_VECTOR = new Vector3(0, 1, 0);
 
-function createFallbackGlobeTexture(): CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 2048;
-  canvas.height = 1024;
-  const context = canvas.getContext("2d");
-
-  if (context) {
-    const fillGradient = context.createLinearGradient(0, 0, 0, canvas.height);
-    fillGradient.addColorStop(0, "#243d96");
-    fillGradient.addColorStop(0.58, "#233d96");
-    fillGradient.addColorStop(1, "#223a8f");
-    context.fillStyle = fillGradient;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-
-    context.strokeStyle = "rgba(25, 130, 128, 0.24)";
-    context.lineWidth = 2;
-
-    for (let latitude = -75; latitude <= 75; latitude += 15) {
-      const y = ((90 - latitude) / 180) * canvas.height;
-      context.beginPath();
-      context.moveTo(0, y);
-      context.lineTo(canvas.width, y);
-      context.stroke();
-    }
-
-    context.strokeStyle = "rgba(25, 130, 128, 0.18)";
-    context.lineWidth = 1.5;
-
-    for (let longitude = -180; longitude <= 180; longitude += 15) {
-      const x = ((longitude + 180) / 360) * canvas.width;
-      context.beginPath();
-      context.moveTo(x, 0);
-      context.lineTo(x, canvas.height);
-      context.stroke();
-    }
-
-    const vignette = context.createRadialGradient(
-      canvas.width * 0.5,
-      canvas.height * 0.5,
-      canvas.height * 0.15,
-      canvas.width * 0.5,
-      canvas.height * 0.5,
-      canvas.height * 0.75,
-    );
-    vignette.addColorStop(0, "rgba(255, 255, 255, 0)");
-    vignette.addColorStop(1, "rgba(0, 52, 108, 0.22)");
-    context.fillStyle = vignette;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-  }
-
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  texture.needsUpdate = true;
-  return texture;
-}
-
 function parseCoordinates(value: string): Coordinates | null {
   const coordinateMatch = value.match(
     /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/,
@@ -232,11 +176,10 @@ function GlobeScene({ target }: { target: Coordinates }) {
   const { size } = useThree();
   const textureRef = useRef<Texture | null>(null);
   const displacementRef = useRef<Texture | null>(null);
-  const [globeTexture, setGlobeTexture] = useState<Texture>(() => {
-    const fallbackTexture = createFallbackGlobeTexture();
-    textureRef.current = fallbackTexture;
-    return fallbackTexture;
-  });
+
+  // Start as null — globe mesh won't render until the real texture is ready,
+  // preventing the blue fallback flash on load.
+  const [globeTexture, setGlobeTexture] = useState<Texture | null>(null);
   const [displacementMap, setDisplacementMap] = useState<Texture | null>(null);
 
   const markerPosition = useMemo(
@@ -269,21 +212,50 @@ function GlobeScene({ target }: { target: Coordinates }) {
           return;
         }
 
-        loadedTexture.colorSpace = SRGBColorSpace;
-        loadedTexture.anisotropy = 8;
-        loadedTexture.needsUpdate = true;
+        // Bake the aura/vignette overlay directly onto the texture
+        const img = loadedTexture.image as HTMLImageElement;
+        const bakeCanvas = document.createElement("canvas");
+        bakeCanvas.width = img.naturalWidth || img.width || 2048;
+        bakeCanvas.height = img.naturalHeight || img.height || 1024;
+        const ctx = bakeCanvas.getContext("2d");
+
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, bakeCanvas.width, bakeCanvas.height);
+
+          // Replicate the removed overlay mesh: white, emissiveIntensity 0.1, opacity 0.12
+          const vignette = ctx.createRadialGradient(
+            bakeCanvas.width * 0.5,
+            bakeCanvas.height * 0.5,
+            0,
+            bakeCanvas.width * 0.5,
+            bakeCanvas.height * 0.5,
+            bakeCanvas.width * 0.5,
+          );
+          vignette.addColorStop(0, "rgba(255,255,255,0.10)");
+          vignette.addColorStop(0.5, "rgba(255,255,255,0.06)");
+          vignette.addColorStop(1, "rgba(220,220,255,0.14)");
+          ctx.fillStyle = vignette;
+          ctx.fillRect(0, 0, bakeCanvas.width, bakeCanvas.height);
+        }
+
+        const bakedTexture = new CanvasTexture(bakeCanvas);
+        bakedTexture.colorSpace = SRGBColorSpace;
+        bakedTexture.anisotropy = 8;
+        bakedTexture.needsUpdate = true;
+
+        loadedTexture.dispose();
 
         const previousTexture = textureRef.current;
-        textureRef.current = loadedTexture;
-        setGlobeTexture(loadedTexture);
+        textureRef.current = bakedTexture;
+        setGlobeTexture(bakedTexture);
 
-        if (previousTexture && previousTexture !== loadedTexture) {
+        if (previousTexture && previousTexture !== bakedTexture) {
           previousTexture.dispose();
         }
       },
       undefined,
       () => {
-        // Keep fallback texture if local texture loading fails.
+        // Keep globe hidden if texture fails to load — no fallback flash.
       },
     );
 
@@ -359,48 +331,37 @@ function GlobeScene({ target }: { target: Coordinates }) {
       <directionalLight intensity={0.72} position={[2.8, 3.2, 4]} />
       <directionalLight intensity={0.3} position={[-2.4, -1.6, -3]} />
 
-      <group ref={globeGroupRef} position={globePosition} scale={globeScale}>
-        <mesh>
-          <sphereGeometry args={[1, 300, 300]} />
-          <meshStandardMaterial
-            map={globeTexture}
-            color="#ffffff"
-            metalness={0}
-            roughness={0.88}
-            {...(displacementMap
-              ? {
-                  displacementMap,
-                  displacementScale: 0.015,
-                }
-              : {})}
-          />
-        </mesh>
+      {/* Only render once the real texture is ready — no blue flash */}
+      {globeTexture && (
+        <group ref={globeGroupRef} position={globePosition} scale={globeScale}>
+          <mesh>
+            <sphereGeometry args={[1, 200, 200]} />
+            <meshStandardMaterial
+              map={globeTexture}
+              color="#ffffff"
+              metalness={0}
+              roughness={0.88}
+              {...(displacementMap
+                ? {
+                    displacementMap,
+                    displacementScale: 0.015,
+                  }
+                : {})}
+            />
+          </mesh>
 
-        {/* Remove for aura light thingy */}
-        <mesh>
-          <sphereGeometry args={[1.01, 96, 96]} />
-          <meshStandardMaterial
-            color="#ffffff"
-            emissive="#ffffff"
-            emissiveIntensity={0.1}
-            transparent
-            opacity={0.12}
-            metalness={0}
-            roughness={1}
-          />
-        </mesh>
-
-        <mesh position={markerPosition}>
-          <sphereGeometry args={[0.005, 24, 24]} />
-          <meshStandardMaterial
-            color="#78dda2"
-            emissive="#78dda2"
-            emissiveIntensity={0.9}
-            metalness={0}
-            roughness={0.35}
-          />
-        </mesh>
-      </group>
+          <mesh position={markerPosition}>
+            <sphereGeometry args={[0.005, 24, 24]} />
+            <meshStandardMaterial
+              color="#78dda2"
+              emissive="#78dda2"
+              emissiveIntensity={0.9}
+              metalness={0}
+              roughness={0.35}
+            />
+          </mesh>
+        </group>
+      )}
     </>
   );
 }
