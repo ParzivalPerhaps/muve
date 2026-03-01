@@ -33,7 +33,7 @@ export const DEFAULT_COORDINATES: Coordinates = {
 };
 
 const GLOBE_TEXTURE_URL = "/globe_texture.jpg";
-const FRONT_BIAS_VECTOR = new Vector3(0, 0.80, 1).normalize();
+const FRONT_BIAS_VECTOR = new Vector3(0, 0.93, 1).normalize();
 const NORTH_POLE_VECTOR = new Vector3(0, 1, 0);
 const WORLD_UP_VECTOR = new Vector3(0, 1, 0);
 
@@ -243,7 +243,7 @@ function GlobeScene({ target }: { target: Coordinates }) {
   const isSmallViewport = size.width < 768;
   const globePosition: [number, number, number] = isSmallViewport
     ? [0, -1.72, 0]
-    : [0, -1.4, 0];
+    : [0, -1.65, 0];
   const globeScale: [number, number, number] = isSmallViewport
     ? [3.72, 3, 3.72]
     : [4.05, 3, 4.05];
