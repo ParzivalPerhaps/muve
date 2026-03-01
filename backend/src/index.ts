@@ -230,7 +230,7 @@ async function generateAccessibilityChecklist(
 
   const prompt = `Based on these accessibility needs: "${userNeeds}", generate a concise list of architectural or housing features that would be strictly problematic. Respond strictly with a comma-separated list of features to look out for.
   Only include the problematic features if they are really big and really important, meaning absolute dealbreakers or critical safety hazards that make living there impossible (ignore minor inconveniences or easily modifiable things).
-  At the end of it, put a list of problematic features that could cause the score to go down. Make this section named "PROBLEMS: ", make sure that they are common problematic features. Also, make sure everything in PROBLEMS is in a standard format, 
+  At the end of it, put a list of problematic features that could cause the score to go down. Make this section named "PROBLEMS: ", make sure that they are common problematic features, limiting it to 5 max. Also, make sure everything in PROBLEMS is in a standard format,
   with you making everything lowercase and having underscores as spaces. MAKE SURE TO DO THIS NO MATTER WHAT THIS IS THE MOST IMPORTANT
   Make sure the problematic features are simple.
 
