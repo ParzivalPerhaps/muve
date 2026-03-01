@@ -4,6 +4,9 @@
     "@react-three/fiber": "^9.5.0",
     "three": "^0.183.2"
   },
+  "scripts": {
+    "deploy": "cd backend && vercel && cd ../frontend && vercel"
+  },
   "devDependencies": {
     "@types/three": "^0.183.1"
   }

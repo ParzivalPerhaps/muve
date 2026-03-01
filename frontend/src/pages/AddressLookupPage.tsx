@@ -132,7 +132,7 @@ export default function AddressLookupPage({
               value={address}
               onChange={(event) => setAddress(event.target.value)}
               placeholder="308 Negra Arroyo Lane"
-              disabled={showConfirmation}
+              disabled={showConfirmation || isResolving}
               tabIndex={showConfirmation ? -1 : 0}
             />
           )}

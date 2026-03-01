@@ -63,6 +63,8 @@ export type SpecialtyResult = {
   findings: string;
 };
 
+export type TriggeredFlags = Record<string, string>;
+
 export type PropertySession = {
   id: string;
   address: string;
@@ -71,6 +73,7 @@ export type PropertySession = {
   accessibility_checklist?: string | null;
   image_results?: SessionImageResult[] | null;
   specialty_results?: SpecialtyResult[] | null;
+  triggered_flags?: TriggeredFlags | null;
   final_score?: number | null;
   final_summary?: string | null;
   created_at?: string;

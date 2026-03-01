@@ -1,5 +1,5 @@
 import express from 'express'
-import cors from 'cors';
+import cors from 'cors'
 import puppeteer from 'puppeteer';
 import * as cheerio from 'cheerio';
 import "dotenv/config";
@@ -9,7 +9,24 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from '@supabase/supabase-js';
 
 const app = express();
-app.use(cors());
+
+const allowedOrigins = ['https://muve-five.vercel.app', 'http://localhost:5173'];
+
+// CORS — must handle preflight explicitly for Vercel serverless
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Include OPTIONS
+  credentials: true, // Allow cookies, authorization headers, etc.
+}));
+
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
