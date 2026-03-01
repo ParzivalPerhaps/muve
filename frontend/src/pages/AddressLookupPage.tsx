@@ -127,14 +127,34 @@ export default function AddressLookupPage({
           <label className="sr-only" htmlFor="address-input">
             Address
           </label>
-          <input
-            id="address-input"
-            className="mt-5 block w-full rounded-[10px] border border-[#8c908f] px-3 py-[14px] text-[18px] leading-[1.2] text-primary-dark placeholder:text-[#8e9291] focus:border-[#737675] selection:bg-accent focus:outline-none md:rounded-[14px] md:px-5 md:py-4"
-            value={address}
-            onChange={(event) => setAddress(event.target.value)}
-            placeholder="308 Negra Arroyo Lane"
-            disabled={showConfirmation}
-          />
+          <div className={"relative mt-5"}>
+            {!showConfirmation && (
+              <input
+                id="address-input"
+                className={`block w-full rounded-[10px] border px-3 py-[14px] text-[18px] leading-[1.2] text-primary-dark placeholder:text-[#8e9291] focus:border-[#737675] selection:bg-accent focus:outline-none md:rounded-[14px] md:px-5 md:py-4 transition-all duration-500 ease-in-out ${
+                  showConfirmation
+                    ? "opacity-0 scale-y-0 h-0 py-0 border-transparent overflow-hidden"
+                    : "opacity-100 scale-y-100 border-[#8c908f]"
+                }`}
+                value={address}
+                onChange={(event) => setAddress(event.target.value)}
+                placeholder="308 Negra Arroyo Lane"
+                disabled={showConfirmation}
+                tabIndex={showConfirmation ? -1 : 0}
+              />
+            )}
+            {showConfirmation && (
+              <p
+                className={`text-[24px] text-primary-dark md:text-[20px] transition-all duration-500 ease-in-out ${
+                  showConfirmation
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 -translate-y-2 absolute top-0 left-0 pointer-events-none"
+                }`}
+              >
+                {address}
+              </p>
+            )}
+          </div>
 
           {!showConfirmation && (
             <>

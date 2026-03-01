@@ -180,9 +180,10 @@ app.post('/api/images', async (req, res) => {
       }
     });
     
-    const imagesArray = Array.from(images);
-    console.log(imagesArray.length);
-    console.log(images)
+    const targetId = Array.from(images)[0].split("/")[6];
+    
+
+    const imagesArray = Array.from(images).filter((v) => v.split("/")[6] == targetId);
     res.json({ imagesArray  });
 
   }
