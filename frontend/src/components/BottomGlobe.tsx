@@ -33,7 +33,7 @@ export const DEFAULT_COORDINATES: Coordinates = {
   lon: -117.879669,
 };
 
-const GLOBE_TEXTURE_URL = "/globe_texture_upscale.jpg";
+const GLOBE_TEXTURE_URL = "/eeee.jpg";
 const DISPLACEMENT_MAP_URL = "/GDEM-10km-BW.png";
 const FRONT_BIAS_VECTOR = new Vector3(0, 0.93, 1).normalize();
 const NORTH_POLE_VECTOR = new Vector3(0, 1, 0);
@@ -380,8 +380,8 @@ function GlobeScene({ target }: { target: Coordinates }) {
         <mesh>
           <sphereGeometry args={[1.03, 96, 96]} />
           <meshStandardMaterial
-            color="#9fded9"
-            emissive="#9fded9"
+            color="#ffffff"
+            emissive="#ffffff"
             emissiveIntensity={0.1}
             transparent
             opacity={0.12}
