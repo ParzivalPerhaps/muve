@@ -33,7 +33,7 @@ export const DEFAULT_COORDINATES: Coordinates = {
 };
 
 const GLOBE_TEXTURE_URL = "/globe_texture.jpg";
-const FRONT_BIAS_VECTOR = new Vector3(0, 0.18, 1).normalize();
+const FRONT_BIAS_VECTOR = new Vector3(0, 0.80, 1).normalize();
 const NORTH_POLE_VECTOR = new Vector3(0, 1, 0);
 const WORLD_UP_VECTOR = new Vector3(0, 1, 0);
 
@@ -172,8 +172,8 @@ function latLonToVector3(lat: number, lon: number, radius = 1): Vector3 {
   const longitudeRadians = MathUtils.degToRad(lon);
 
   return new Vector3(
-    radius * Math.cos(latitudeRadians) * Math.cos(longitudeRadians),
-    radius * Math.sin(latitudeRadians),
+     radius * Math.cos(latitudeRadians) * Math.cos(longitudeRadians),
+     radius * Math.sin(latitudeRadians),
     -radius * Math.cos(latitudeRadians) * Math.sin(longitudeRadians),
   );
 }
@@ -245,8 +245,8 @@ function GlobeScene({ target }: { target: Coordinates }) {
     ? [0, -1.72, 0]
     : [0, -1.4, 0];
   const globeScale: [number, number, number] = isSmallViewport
-    ? [3.72, 3.72, 3.72]
-    : [4.05, 3.08, 4.05];
+    ? [3.72, 3, 3.72]
+    : [4.05, 3, 4.05];
 
   const targetQuaternion = useMemo(
     () => toNorthUpTargetQuaternion({ lat: target.lat, lon: target.lon }),
@@ -321,6 +321,7 @@ function GlobeScene({ target }: { target: Coordinates }) {
           />
         </mesh>
 
+      {/* Remove for aura light thingy */}
         <mesh>
           <sphereGeometry args={[1.03, 96, 96]} />
           <meshStandardMaterial
