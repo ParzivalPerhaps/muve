@@ -212,7 +212,8 @@ async function generateAccessibilityChecklist(
 
   const prompt = `Based on these accessibility needs: "${userNeeds}", generate a concise list of architectural or housing features that would be strictly problematic. Respond strictly with a comma-separated list of features to look out for.
   Only include the problematic features if they are really big and really important, meaning absolute dealbreakers or critical safety hazards that make living there impossible (ignore minor inconveniences or easily modifiable things).
-  At the end of it, put a list of problematic features that could cause the score to go down. Make this section named "PROBLEMS: ", make sure that they are common problematic features.
+  At the end of it, put a list of problematic features that could cause the score to go down. Make this section named "PROBLEMS: ", make sure that they are common problematic features. Also, make sure everything in PROBLEMS is in a standard format, 
+  with you making everything lowercase and having underscores as spaces
   Make sure the problematic features are simple.
 
   Finally, on a new line at the very end, output EXACTLY this format (include only the relevant ones, omit those that are not relevant):
@@ -319,14 +320,15 @@ async function analyzeImagesInBatches(
   checklist: string
 ): Promise<Array<{ image_url: string; trigger_found: string[] | null }>> {
   const BATCH_SIZE = 3;
+  images = images.slice(0, 30); // Cap at 30 images max
   const accumulatedResults: Array<{ image_url: string; trigger_found: string[] | null }> = [];
 
   const totalBatches = Math.ceil(images.length / BATCH_SIZE);
   console.log(`[Session ${sessionId}] Processing ${images.length} images in ${totalBatches} concurrent batches...`);
 
   const analysisPrompt = `Analyze these images. Look for the following features that make it not so accessible (Make sure it has to do with housing or retail) : ${checklist}. However, try to not flag too many images if not needed, keep it conservative and low
-  Return a STRICT JSON array of objects. Format: [{"url": "<image_url>", "trigger": "<describe trigger found, or 'None'>", "pixel_coordinates": <pixel coordinates if possible, if not put null>}]
-  I want you to also make sure the identifiers are in groups. There is a list called PROBLEMS: above, I want you to use just those features and make the identifiers those. For the coordinates, make sure its an array of 2 numbers with it being number 1 x number 2.
+  Return a STRICT JSON array of objects. Format: [{"url": "<image_url>", "trigger": "<describe trigger found, or 'None'>"}]
+  I want you to also make sure the identifiers are in groups. There is a list called PROBLEMS: above, I want you to use just those features and make the identifiers those. 
   Can you also make it so there can be multiple features per image, with it being separated by a comma, only do this if needed
   `;
 
@@ -371,7 +373,7 @@ async function analyzeImagesInBatches(
 async function analyzeSingleBatch(
   imageUrls: string[],
   prompt: string
-): Promise<Array<{ image_url: string; trigger_found: string[] | null, pixel_coordinates: string | null }>> {
+): Promise<Array<{ image_url: string; trigger_found: string[] | null }>> {
   const aiResponseStr = await imageinGroups(imageUrls, prompt);
 
   if (!aiResponseStr) {
@@ -391,8 +393,7 @@ async function analyzeSingleBatch(
     image_url: imageUrls[index],
     trigger_found: result.trigger !== 'None'
       ? result.trigger.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0)
-      : null,
-    pixel_coordinates: result.pixel_coordinates ? result.pixel_coordinates : null
+      : null
   }));
 }
 
