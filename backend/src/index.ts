@@ -183,7 +183,7 @@ async function processPropertyBackground(
     }
 
     // Step 4: Collect all triggered flags and save
-    await collectTriggeredFlags(sessionId, imageAnalysisResults, specialtyResults);
+    await collectTriggeredFlags(sessionId, imageAnalysisResults, specialtyResults, specialtyFlags);
 
     console.log(`[Session ${sessionId}] Analysis completed successfully!`);
 
@@ -213,7 +213,7 @@ async function generateAccessibilityChecklist(
   const prompt = `Based on these accessibility needs: "${userNeeds}", generate a concise list of architectural or housing features that would be strictly problematic. Respond strictly with a comma-separated list of features to look out for.
   Only include the problematic features if they are really big and really important, meaning absolute dealbreakers or critical safety hazards that make living there impossible (ignore minor inconveniences or easily modifiable things).
   At the end of it, put a list of problematic features that could cause the score to go down. Make this section named "PROBLEMS: ", make sure that they are common problematic features. Also, make sure everything in PROBLEMS is in a standard format, 
-  with you making everything lowercase and having underscores as spaces
+  with you making everything lowercase and having underscores as spaces. MAKE SURE TO DO THIS NO MATTER WHAT THIS IS THE MOST IMPORTANT
   Make sure the problematic features are simple.
 
   Finally, on a new line at the very end, output EXACTLY this format (include only the relevant ones, omit those that are not relevant):
@@ -410,7 +410,8 @@ function toDisplayName(identifier: string): string {
 async function collectTriggeredFlags(
   sessionId: string,
   imageResults: Array<{ image_url: string; trigger_found: string[] | null }>,
-  specialtyResults: SpecialtyResult[] = []
+  specialtyResults: SpecialtyResult[] = [],
+  specialtyFlags: { elevation: boolean; proximity: boolean; pollution: boolean; streetLighting: boolean } = { elevation: false, proximity: false, pollution: false, streetLighting: false }
 ): Promise<void> {
   console.log(`[Session ${sessionId}] Collecting triggered flags...`);
 
@@ -429,22 +430,42 @@ async function collectTriggeredFlags(
     }
   }
 
-  // Collect specialty flags: category → findings
-  for (const r of specialtyResults) {
-    if (!flagsMap[r.category]) {
-      flagsMap[r.category] = r.findings;
+  const specialtyTriggers: Record<string, string> = {
+    elevation: 'steep_surrounding_terrain',
+    proximity: 'no_nearby_transportation',
+    pollution: 'high_noise_or_light_pollution',
+    streetLighting: 'bad_street_lighting'
+  };
+
+  for (const [key, trigger] of Object.entries(specialtyTriggers)) {
+    if (specialtyFlags[key as keyof typeof specialtyFlags]) {
+      const found = specialtyResults.find(r => r.category.toLowerCase().includes(key.toLowerCase())
+        || (key === 'elevation' && r.category.includes('Elevation'))
+        || (key === 'proximity' && r.category.includes('Services'))
+        || (key === 'pollution' && r.category.includes('Pollution'))
+        || (key === 'streetLighting' && r.category.includes('Lighting'))
+      );
+      if (found) {
+        flagsMap[trigger] = toDisplayName(trigger);
+      }
     }
   }
 
+  // Calculate score: start at 100, deduct for each image flag
+  const imageIssueCount = Object.keys(flagsMap).filter(k => !Object.values(specialtyTriggers).includes(k)).length;
+  const score = Math.max(0, Math.round(100 - (imageIssueCount * 8)));
+
   console.log(`\n[Session ${sessionId}] *** TRIGGERED FLAGS ***`);
   console.log(flagsMap);
+  console.log(`Score: ${score}`);
   console.log(`***************************\n`);
 
-  // Update database with flags and mark completed
+  // Update database with flags, score, and mark completed
   await supabase
     .from('evaluations')
     .update({
       triggered_flags: flagsMap,
+      final_score: score,
       status: 'completed'
     })
     .eq('id', sessionId);
