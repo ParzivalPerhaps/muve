@@ -35,7 +35,7 @@ export const DEFAULT_COORDINATES: Coordinates = {
 
 const GLOBE_TEXTURE_URL = "/eeee.jpg";
 const DISPLACEMENT_MAP_URL = "/GDEM-10km-BW.png";
-const FRONT_BIAS_VECTOR = new Vector3(0, 0.93, 1).normalize();
+const FRONT_BIAS_VECTOR = new Vector3(0, 1.15, 1).normalize();
 const NORTH_POLE_VECTOR = new Vector3(0, 1, 0);
 const WORLD_UP_VECTOR = new Vector3(0, 1, 0);
 
@@ -378,7 +378,7 @@ function GlobeScene({ target }: { target: Coordinates }) {
 
         {/* Remove for aura light thingy */}
         <mesh>
-          <sphereGeometry args={[1.03, 96, 96]} />
+          <sphereGeometry args={[1.01, 96, 96]} />
           <meshStandardMaterial
             color="#ffffff"
             emissive="#ffffff"
