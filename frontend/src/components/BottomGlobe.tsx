@@ -248,7 +248,7 @@ function GlobeScene({ target }: { target: Coordinates }) {
   const globePosition: [number, number, number] = isSmallViewport
     ? [0, -1.72, 0]
     : [0, -1.8, 0];
-    const globeScale: [number, number, number] = isSmallViewport
+  const globeScale: [number, number, number] = isSmallViewport
     ? [3.2, 3.2, 3.2]
     : [3.5, 3.5, 3.5];
 
@@ -361,7 +361,7 @@ function GlobeScene({ target }: { target: Coordinates }) {
 
       <group ref={globeGroupRef} position={globePosition} scale={globeScale}>
         <mesh>
-          <sphereGeometry args={[1, 200, 200]} />
+          <sphereGeometry args={[1, 300, 300]} />
           <meshStandardMaterial
             map={globeTexture}
             color="#ffffff"

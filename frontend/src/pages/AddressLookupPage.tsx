@@ -5,7 +5,7 @@ import { geocodeAddress, type Coordinates } from "../components/BottomGlobe";
 import ExternalLinkIcon from "../icons/ExternalLinkIcon";
 
 interface AddressLookupPageProps {
-  onAddressConfirmed: (coords: Coordinates, address: string) => void;
+  onAddressConfirmed: (coords: Coordinates, address: string, images: string[]) => void;
   onGlobeHide: () => void;
   onGlobeShow: () => void;
   handleGlobeUpdate: (coords: Coordinates) => void;
@@ -85,7 +85,7 @@ export default function AddressLookupPage({
     if (!resolvedLabel) return;
     geocodeAddress(address).then((result) => {
       if (result) {
-        onAddressConfirmed(result.coordinates, address);
+        onAddressConfirmed(result.coordinates, address, images);
       }
     });
   }
@@ -98,8 +98,10 @@ export default function AddressLookupPage({
   }
 
   const showConfirmation = images.length > 0;
-  const displayImages =
+  const pickedImages: (string | null)[] =
     images.length > 5 ? [images[3], images[1], images[4]] : images.slice(0, 3);
+  // Always pad to 3 cards so empty slots render as placeholders
+  while (pickedImages.length < 3) pickedImages.push(null);
 
   return (
     <section className="relative z-10 flex-1">
@@ -174,26 +176,33 @@ export default function AddressLookupPage({
         {showConfirmation && (
           <>
             <div className="relative mt-0 flex justify-center items-center h-[340px] md:h-[400px]">
-              {displayImages.map((url, i) => {
+              {pickedImages.map((url, i) => {
                 const card = IMAGE_CARDS[i];
+                const isEmpty = url === null;
                 return (
                   <div
-                    key={url}
-                    className="absolute w-[260px] h-[180px] md:w-[340px] md:h-[230px] rounded-[14px] overflow-hidden shadow-lg transition-all duration-700 ease-out"
+                    key={url ?? `empty-${i}`}
+                    className={`absolute w-[260px] h-[180px] md:w-[340px] md:h-[230px] rounded-[14px] transition-all duration-700 ease-out ${
+                      isEmpty
+                        ? "border-2 border-dashed border-primary-dark/20"
+                        : "overflow-hidden shadow-lg"
+                    }`}
                     style={{
-                      zIndex: card.zIndex,
+                      zIndex: isEmpty ? 0 : card.zIndex,
                       transform: imagesRevealed
                         ? `rotate(${card.rotate}deg) translateX(${card.translateX}px) translateY(${card.translateY}px)`
                         : "rotate(0deg) translateX(-120px) translateY(40px) scale(0.9)",
-                      opacity: imagesRevealed ? 1 : 0,
+                      opacity: imagesRevealed ? (isEmpty ? 0.4 : 1) : 0,
                       transitionDelay: `${i * 120}ms`,
                     }}
                   >
-                    <img
-                      src={url}
-                      alt={`Property photo ${i + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                    {!isEmpty && (
+                      <img
+                        src={url}
+                        alt={`Property photo ${i + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                   </div>
                 );
               })}

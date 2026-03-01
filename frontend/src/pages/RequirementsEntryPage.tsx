@@ -1,22 +1,24 @@
 import { useCallback, useRef, useState } from "react";
 import FlagIcon from "../icons/FlagIcon";
+import { analyzeProperty } from "../lib/api";
 
-const SUGGESTED_TAGS = [
-  "entry stairs",
-  "tight corners",
-  "nearby bus stops",
-];
+const SUGGESTED_TAGS = ["entry stairs", "tight corners", "nearby bus stops"];
 
 interface RequirementsEntryPageProps {
   address: string;
+  images: string[];
+  onEvaluationStarted: (sessionId: string) => void;
 }
 
 export default function RequirementsEntryPage({
   address,
+  images,
+  onEvaluationStarted,
 }: RequirementsEntryPageProps) {
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [freeText, setFreeText] = useState("");
   const [flagShaking, setFlagShaking] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const hasShaken = useRef(false);
   const shakeTimeout = useRef<ReturnType<typeof setTimeout>>();
 
@@ -40,13 +42,16 @@ export default function RequirementsEntryPage({
     triggerShake();
   }
 
-  function handleRunEvaluation() {
-    // TODO: wire up to backend
-    console.log("Running evaluation", {
-      address,
-      tags: [...selectedTags],
-      freeText,
-    });
+  async function handleRunEvaluation() {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const w = await analyzeProperty({ userNeeds: freeText, address });
+      onEvaluationStarted(w.sessionId);
+    } catch {
+      setIsSubmitting(false);
+    }
   }
 
   const hasInput = selectedTags.size > 0 || freeText.trim().length > 0;
@@ -94,24 +99,21 @@ export default function RequirementsEntryPage({
               triggerShake();
             }
           }}
-          placeholder="I have a back injury. I'd rather not inflammate by gates/fences."
+          placeholder="I have a back injury. I'd rather not inflame by using gates/fences."
         />
 
         {/* Spacer to push address + button toward bottom */}
         <div className="mt-auto" />
 
         {/* Address label and action button */}
-        <div className="mt-[200px] md:mt-[280px]">
-          {address && (
-            <p className="text-[15px] text-primary-dark/70 mb-2">{address}</p>
-          )}
+        <div className="mt-[30px] md:mt-[60px]">
           <button
             type="button"
-            disabled={!hasInput}
+            disabled={!hasInput || isSubmitting}
             onClick={handleRunEvaluation}
             className="rounded-[10px] cursor-pointer disabled:cursor-not-allowed border border-accent bg-transparent px-[24px] py-[8px] text-[16px] leading-none text-accent not-disabled:hover:bg-accent/5 transition-all duration-75 disabled:opacity-50"
           >
-            run muve evaluation
+            {isSubmitting ? "starting..." : "run evaluation"}
           </button>
         </div>
       </div>
