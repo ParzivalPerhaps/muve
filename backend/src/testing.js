@@ -1,33 +1,57 @@
+async function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function testWorkflow() {
-  console.log("Testing /api/images...");
-  const imagesResponse = await fetch("http://127.0.0.1:3001/api/images", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ address: "3126 S Rita Way, Santa Ana, CA 92704" })
-  });
+    console.log("Starting full background analysis test...");
 
-  const imagesData = await imagesResponse.json();
-  console.log("Images Status:", imagesResponse.status);
-  console.log("Images found:", imagesData.imagesArray ? imagesData.imagesArray.length : 0);
+    const startResponse = await fetch("http://127.0.0.1:3001/api/analyzeProperty", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+            address: "3126 S Rita Way, Santa Ana, CA 92704",
+            userNeeds: "Uses a wheelchair, needs zero-step entry, wide doorways, and roll-in shower."
+        })
+    });
 
-  if (!imagesData.imagesArray || imagesData.imagesArray.length === 0) {
-    console.log("No images found, skipping triggers test.");
-    return;
-  }
+    const startData = await startResponse.json();
+    if (!startData.sessionId) return console.log("Failed to get sessionId.");
 
-  const testImages = imagesData.imagesArray.slice(0,5);
-  console.log(`\nTesting /api/triggersFromImmage/ with ${testImages.length} images...`);
+    const sessionId = startData.sessionId;
+    let isProcessing = true;
+    let lastImageCount = 0;
 
-  const triggersResponse = await fetch("http://127.0.0.1:3001/api/triggersFromImmage/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ images: testImages })
-  });
+    console.log(`\nPolling for updates on Session ID: ${sessionId}...\n`);
+    
+    while (isProcessing) {
+        await delay(5000); 
 
-  const triggersData = await triggersResponse.json();
-  console.log("Triggers Status:", triggersResponse.status);
-  console.log("Triggers Response:", JSON.stringify(triggersData, null, 2));
+        try {
+            const checkResponse = await fetch(`http://127.0.0.1:3001/api/session/${sessionId}`);
+            const sessionData = await checkResponse.json();
+
+            // Only print if the number of images processed has gone up
+            if (sessionData.image_results && sessionData.image_results.length > lastImageCount) {
+                lastImageCount = sessionData.image_results.length;
+                console.log(`[Status: ${sessionData.status.toUpperCase()}] Images Processed: ${lastImageCount}`);
+                
+                const foundTriggers = sessionData.image_results.filter(img => img.trigger_found !== null);
+                if (foundTriggers.length > 0) {
+                    console.log(`   -> Found ${foundTriggers.length} potential issues so far.`);
+                }
+            }
+              
+            if (sessionData.status === 'completed' || sessionData.status === 'error') {
+                isProcessing = false;
+                console.log("\n--- FINAL RESULTS ---");
+                console.log(`Score: ${sessionData.final_score}`);
+                console.log(`Summary: ${sessionData.final_summary}`);
+                console.log("---------------------");
+            }
+        } catch (err) {
+            console.error("Error polling session:", err.message);
+        }
+    }
 }
 
 testWorkflow();
-// tsts
