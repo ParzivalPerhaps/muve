@@ -3,14 +3,34 @@ async function delay(ms) {
 }
 
 async function testWorkflow() {
-    console.log("Starting full background analysis test...");
+    const address = "1400 Heritage Lndg Unit 203, St Charles, MO";
+    const userNeeds = "I am a disabled war veteran with ptsd, cataracts, and have trouble walking.";
 
+    console.log("Step 1: Fetching images from /api/images...");
+
+    // Simulate the frontend: first get images from the images endpoint
+    const imagesResponse = await fetch("http://127.0.0.1:3001/api/images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address })
+    });
+
+    const imagesData = await imagesResponse.json();
+
+    if (!imagesData.imagesArray || imagesData.imagesArray.length === 0) {
+        return console.log("Failed to get images. Response:", imagesData);
+    }
+
+    console.log(`Got ${imagesData.imagesArray.length} images. Starting analysis...\n`);
+
+    // Now call analyzeProperty with the images array, like the frontend would
     const startResponse = await fetch("http://127.0.0.1:3001/api/analyzeProperty", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            address: "1400 Heritage Lndg Unit 203, St Charles, MO ",
-            userNeeds: "I am a disabled war veteran with ptsd, cataracts, and have trouble walking."
+            address,
+            userNeeds,
+            images: imagesData.imagesArray
         })
     });
 
@@ -21,7 +41,7 @@ async function testWorkflow() {
     let isProcessing = true;
     let lastImageCount = 0;
 
-    console.log(`\nPolling for updates on Session ID: ${sessionId}...\n`);
+    console.log(`Polling for updates on Session ID: ${sessionId}...\n`);
 
     while (isProcessing) {
         await delay(5000);

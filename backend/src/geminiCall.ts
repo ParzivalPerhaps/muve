@@ -6,12 +6,12 @@ const AI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = AI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 
-export async function generalImageCall (req, prompt: string) {
+export async function generalImageCall(req, prompt: string) {
 
 
     const images = req.body.images;
-    
-   
+
+
     const parts: any[] = [
         {
             text: prompt
@@ -19,9 +19,9 @@ export async function generalImageCall (req, prompt: string) {
     ];
 
 
-    try{
+    try {
 
-        
+
         // Switch images to imageCap if we want a limiter
 
         const imageCap = images.slice(0, 30);
@@ -43,11 +43,11 @@ export async function generalImageCall (req, prompt: string) {
 
         const result = await model.generateContent({
             contents: [{ role: "user", parts }]
-            })
+        })
 
         const response = result.response.text();
 
-        return JSON.stringify({analysis:response})
+        return JSON.stringify({ analysis: response })
     }
     catch {
         console.log("error with general image searching api call")
@@ -56,11 +56,11 @@ export async function generalImageCall (req, prompt: string) {
 
 
 
-    
+
 
 }
 
-export async function imageinGroups (images, prompt: string) {
+export async function imageinGroups(images, prompt: string) {
     const parts: any[] = [
         {
             text: prompt
@@ -87,11 +87,11 @@ export async function imageinGroups (images, prompt: string) {
 
         const response = result.response.text();
 
-        return JSON.stringify({analysis:response})
+        return JSON.stringify({ analysis: response })
     }
     catch (err) {
         console.error("error with general image searching api call:", err);
-        
+
         return JSON.stringify({ analysis: "[]" });
     }
 }

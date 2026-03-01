@@ -32,28 +32,17 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
     return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
 }
 
-
-function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const R = 6371000; // Earth radius in meters
-    const toRad = (d: number) => (d * Math.PI) / 180;
-    const dLat = toRad(lat2 - lat1);
-    const dLng = toRad(lng2 - lng1);
-    const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 // ---------------------------------------------------------------------------
 // 1. Elevation Challenges
 // ---------------------------------------------------------------------------
 async function checkElevationChallenges(
     address: string,
-    model: GenerativeModel
+    model: GenerativeModel,
+    coords: { lat: number; lng: number }
 ): Promise<SpecialtyResult> {
     console.log(`[Specialty] Checking elevation challenges for: ${address}`);
 
-    const { lat, lng } = await geocodeAddress(address);
+    const { lat, lng } = coords;
 
     // Sample 8 points in a ~200m radius around the property
     const offsetDeg = 0.002; // ~200m
@@ -88,25 +77,12 @@ async function checkElevationChallenges(
     const minElev = Math.min(...elevations);
     const elevDiff = maxElev - minElev;
 
-    // Calculate slope grades between center point and each surrounding point
-    const centerElev = elevations[0];
-    const distToPoint = offsetDeg * 111_320; // approx meters per degree of latitude
-    const slopes = elevations.slice(1).map((e, i) => {
-        const rise = Math.abs(e - centerElev);
-        const grade = (rise / distToPoint) * 100;
-        return { point: i + 2, elevation: e, grade: Math.round(grade * 10) / 10 };
-    });
-    const maxGrade = Math.max(...slopes.map(s => s.grade));
-
     const prompt = `You are an accessibility expert. A property is located at ${address} (lat: ${lat}, lng: ${lng}).
 
 Elevation samples in a ~200m radius around the property (in meters):
 ${elevations.map((e, i) => `Point ${i + 1}: ${e.toFixed(1)}m`).join('\n')}
 
 The elevation difference across these points is ${elevDiff.toFixed(1)} meters.
-Slope grades from the property to surrounding points:
-${slopes.map(s => `Point ${s.point}: ${s.grade}% grade`).join('\n')}
-Steepest grade: ${maxGrade}% (ADA recommends max 5% for ramps, 8.33% for short ramps).
 
 Based on this data, write a concise 2-3 sentence assessment of how challenging the surrounding terrain would be for someone with mobility issues (wheelchair, walker, etc.). Focus on slope steepness, hill challenges, and walkability. Be practical and specific.`;
 
@@ -122,11 +98,12 @@ Based on this data, write a concise 2-3 sentence assessment of how challenging t
 // ---------------------------------------------------------------------------
 async function checkProximityServices(
     address: string,
-    model: GenerativeModel
+    model: GenerativeModel,
+    coords: { lat: number; lng: number }
 ): Promise<SpecialtyResult> {
     console.log(`[Specialty] Checking proximity to services for: ${address}`);
 
-    const { lat, lng } = await geocodeAddress(address);
+    const { lat, lng } = coords;
 
     // Overpass query: find transit, hospitals, pharmacies, grocery within ~1km
     const overpassQuery = `
@@ -155,46 +132,30 @@ async function checkProximityServices(
         const overpassData = await overpassRes.json() as any;
         const elements = overpassData.elements || [];
 
-        // Categorize results and track nearest distance
-        const categories: Record<string, { count: number; nearestMeters: number }> = {
-            'Bus stops': { count: 0, nearestMeters: Infinity },
-            'Train/tram stations': { count: 0, nearestMeters: Infinity },
-            'Hospitals': { count: 0, nearestMeters: Infinity },
-            'Clinics': { count: 0, nearestMeters: Infinity },
-            'Pharmacies': { count: 0, nearestMeters: Infinity },
-            'Supermarkets': { count: 0, nearestMeters: Infinity },
-            'Convenience stores': { count: 0, nearestMeters: Infinity },
-        };
-
-        const updateCategory = (name: string, el: any) => {
-            categories[name].count++;
-            const elLat = el.lat ?? el.center?.lat;
-            const elLng = el.lon ?? el.center?.lon;
-            if (elLat != null && elLng != null) {
-                const dist = haversineMeters(lat, lng, elLat, elLng);
-                if (dist < categories[name].nearestMeters) {
-                    categories[name].nearestMeters = dist;
-                }
-            }
+        // Categorize results
+        const categories: Record<string, number> = {
+            'Bus stops': 0,
+            'Train/tram stations': 0,
+            'Hospitals': 0,
+            'Clinics': 0,
+            'Pharmacies': 0,
+            'Supermarkets': 0,
+            'Convenience stores': 0,
         };
 
         for (const el of elements) {
             const tags = el.tags || {};
-            if (tags.highway === 'bus_stop') updateCategory('Bus stops', el);
-            else if (tags.railway === 'station' || tags.railway === 'tram_stop') updateCategory('Train/tram stations', el);
-            else if (tags.amenity === 'hospital') updateCategory('Hospitals', el);
-            else if (tags.amenity === 'clinic') updateCategory('Clinics', el);
-            else if (tags.amenity === 'pharmacy') updateCategory('Pharmacies', el);
-            else if (tags.shop === 'supermarket') updateCategory('Supermarkets', el);
-            else if (tags.shop === 'convenience') updateCategory('Convenience stores', el);
+            if (tags.highway === 'bus_stop') categories['Bus stops']++;
+            else if (tags.railway === 'station' || tags.railway === 'tram_stop') categories['Train/tram stations']++;
+            else if (tags.amenity === 'hospital') categories['Hospitals']++;
+            else if (tags.amenity === 'clinic') categories['Clinics']++;
+            else if (tags.amenity === 'pharmacy') categories['Pharmacies']++;
+            else if (tags.shop === 'supermarket') categories['Supermarkets']++;
+            else if (tags.shop === 'convenience') categories['Convenience stores']++;
         }
 
         poiSummary = Object.entries(categories)
-            .map(([name, { count, nearestMeters }]) => {
-                if (count === 0) return `${name}: none found`;
-                const dist = nearestMeters === Infinity ? 'unknown distance' : `nearest ~${Math.round(nearestMeters)}m away`;
-                return `${name}: ${count} found (${dist})`;
-            })
+            .map(([name, count]) => `${name}: ${count} within range`)
             .join('\n');
     } catch (err) {
         console.error('[Specialty] Overpass API error:', err);
@@ -220,11 +181,12 @@ Based on this data, write a concise 2-3 sentence assessment of how convenient th
 // ---------------------------------------------------------------------------
 async function checkPollutionLevels(
     address: string,
-    model: GenerativeModel
+    model: GenerativeModel,
+    coords: { lat: number; lng: number }
 ): Promise<SpecialtyResult> {
     console.log(`[Specialty] Checking noise/light pollution for: ${address}`);
 
-    const { lat, lng } = await geocodeAddress(address);
+    const { lat, lng } = coords;
 
     // Overpass query: find noise/light sources within ~1km
     const overpassQuery = `
@@ -240,9 +202,6 @@ async function checkPollutionLevels(
       node["amenity"="bar"](around:500,${lat},${lng});
       way["landuse"="commercial"](around:500,${lat},${lng});
       way["landuse"="industrial"](around:800,${lat},${lng});
-      way["landuse"="construction"](around:500,${lat},${lng});
-      node["leisure"="stadium"](around:1000,${lat},${lng});
-      way["leisure"="stadium"](around:1000,${lat},${lng});
     );
     out body;
   `;
@@ -264,8 +223,6 @@ async function checkPollutionLevels(
             'Bars/nightclubs nearby': 0,
             'Commercial zones nearby': 0,
             'Industrial zones nearby': 0,
-            'Construction sites nearby': 0,
-            'Stadiums/event venues nearby': 0,
         };
 
         for (const el of elements) {
@@ -276,8 +233,6 @@ async function checkPollutionLevels(
             else if (tags.amenity === 'nightclub' || tags.amenity === 'bar') sources['Bars/nightclubs nearby']++;
             else if (tags.landuse === 'commercial') sources['Commercial zones nearby']++;
             else if (tags.landuse === 'industrial') sources['Industrial zones nearby']++;
-            else if (tags.landuse === 'construction') sources['Construction sites nearby']++;
-            else if (tags.leisure === 'stadium') sources['Stadiums/event venues nearby']++;
         }
 
         pollutionSummary = Object.entries(sources)
@@ -302,21 +257,23 @@ Based on this data, write a concise 2-3 sentence assessment of the noise and lig
     return { category: 'Noise & Light Pollution', findings };
 }
 
-
+// ---------------------------------------------------------------------------
+// 4. Street Lighting
+// ---------------------------------------------------------------------------
 async function checkStreetLighting(
     address: string,
-    model: GenerativeModel
+    model: GenerativeModel,
+    coords: { lat: number; lng: number }
 ): Promise<SpecialtyResult> {
     console.log(`[Specialty] Checking street lighting for: ${address}`);
 
-    const { lat, lng } = await geocodeAddress(address);
+    const { lat, lng } = coords;
 
-    // Overpass query: street lamps within ~500m AND lit status on nearby roads/paths
+    // Overpass query: find street lamps within ~500m
     const overpassQuery = `
     [out:json][timeout:15];
     (
       node["highway"="street_lamp"](around:500,${lat},${lng});
-      way["lit"](around:500,${lat},${lng});
     );
     out body;
   `;
@@ -331,49 +288,26 @@ async function checkStreetLighting(
         const overpassData = await overpassRes.json() as any;
         const elements = overpassData.elements || [];
 
-        let lampCount = 0;
-        let litRoads = 0;
-        let unlitRoads = 0;
+        const streetLamps = elements.filter((el: any) => el.tags && el.tags.highway === 'street_lamp').length;
 
-        for (const el of elements) {
-            const tags = el.tags || {};
-            if (tags.highway === 'street_lamp') {
-                lampCount++;
-            } else if (tags.lit === 'yes') {
-                litRoads++;
-            } else if (tags.lit === 'no') {
-                unlitRoads++;
-            }
-        }
-
-        const totalRoads = litRoads + unlitRoads;
-        const litPercentage = totalRoads > 0 ? Math.round((litRoads / totalRoads) * 100) : -1;
-
-        lightingSummary = `Street lamps within ~500m: ${lampCount}\n`;
-        lightingSummary += `Roads/paths tagged as lit: ${litRoads}\n`;
-        lightingSummary += `Roads/paths tagged as unlit: ${unlitRoads}\n`;
-        if (litPercentage >= 0) {
-            lightingSummary += `Lit road percentage: ${litPercentage}%`;
-        } else {
-            lightingSummary += `Lit road percentage: no data available`;
-        }
+        lightingSummary = `Number of street lamps within ~500m: ${streetLamps}`;
     } catch (err) {
-        console.error('[Specialty] Overpass API error:', err);
+        console.error('[Specialty] Overpass API error for street lighting:', err);
         lightingSummary = 'Unable to retrieve street lighting data.';
     }
 
     const prompt = `You are an accessibility expert. A property is located at ${address}.
 
-Street lighting data for the immediate area (~500m radius):
+Street lighting information found nearby:
 ${lightingSummary}
 
-Based on this data, write a concise 2-3 sentence assessment of how safe and navigable the surrounding area would be at night for someone with poor or low vision. Consider street lamp density, whether roads are well-lit, and whether key pedestrian routes appear to have adequate lighting. Be practical and specific.`;
+Based on this data, write a concise 2-3 sentence assessment of the street lighting in the immediate vicinity. Consider how adequate lighting might impact safety, navigation, and comfort for individuals with visual impairments or those who rely on clear visibility, especially during nighttime. Be practical and specific.`;
 
     const result = await model.generateContent(prompt);
     const findings = result.response.text();
 
-    console.log(`[Specialty] Street lighting findings: ${findings}`);
-    return { category: 'Street Lighting & Night Visibility', findings };
+    console.log(`[Specialty] Street Lighting findings: ${findings}`);
+    return { category: 'Street Lighting', findings };
 }
 
 export async function runSpecialtyChecks(
@@ -382,19 +316,30 @@ export async function runSpecialtyChecks(
     flags: SpecialtyFlags
 ): Promise<SpecialtyResult[]> {
     const results: SpecialtyResult[] = [];
+
+    // Geocode once — shared by all specialty checks
+    let coords: { lat: number; lng: number };
+    try {
+        coords = await geocodeAddress(address);
+        console.log(`[Specialty] Geocoded "${address}" → (${coords.lat}, ${coords.lng})`);
+    } catch (err) {
+        console.warn(`[Specialty] Could not geocode "${address}", skipping specialty checks:`, err);
+        return results;
+    }
+
     const tasks: Promise<SpecialtyResult>[] = [];
 
     if (flags.elevation) {
-        tasks.push(checkElevationChallenges(address, model));
+        tasks.push(checkElevationChallenges(address, model, coords));
     }
     if (flags.proximity) {
-        tasks.push(checkProximityServices(address, model));
+        tasks.push(checkProximityServices(address, model, coords));
     }
     if (flags.pollution) {
-        tasks.push(checkPollutionLevels(address, model));
+        tasks.push(checkPollutionLevels(address, model, coords));
     }
     if (flags.streetLighting) {
-        tasks.push(checkStreetLighting(address, model));
+        tasks.push(checkStreetLighting(address, model, coords));
     }
 
     if (tasks.length === 0) {

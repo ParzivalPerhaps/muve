@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3001;
 
 const AI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 const model = AI.getGenerativeModel({ model: "gemini-2.5-flash" });
-const expensiveModel = AI.getGenerativeModel({model: "gemini-3.1-pro-preview"})
+const expensiveModel = AI.getGenerativeModel({ model: "gemini-3.1-pro-preview" })
 
 const supabase = createClient(
   process.env.SUPABASE_URL as string,
@@ -82,7 +82,7 @@ async function searchUrlFromAddress(address: string, page: puppeteer.Page): Prom
 // API: Start Property Analysis (Background Job)
 // ---------------------------------------------------------------------------
 app.post('/api/analyzeProperty', async (req, res) => {
-  const { address, userNeeds, url } = req.body;
+  const { address, userNeeds, url, images } = req.body;
 
   if (!userNeeds || (!address && !url)) {
     return res.status(400).json({ error: "Missing required fields: userNeeds and either address or url." });
@@ -104,7 +104,7 @@ app.post('/api/analyzeProperty', async (req, res) => {
     res.json({ message: "Analysis started", sessionId: sessionId });
 
     // 3. Kick off the background processing (Fire and Forget)
-    processPropertyBackground(sessionId, address, url, userNeeds).catch(console.error);
+    processPropertyBackground(sessionId, address, url, userNeeds, images).catch(console.error);
 
   } catch (err) {
     console.error("Failed to start analysis:", err);
@@ -134,36 +134,39 @@ async function processPropertyBackground(
   sessionId: string,
   address: string,
   url: string,
-  userNeeds: string
+  userNeeds: string,
+  images: []
 ) {
   let browser = null;
 
   try {
     console.log(`[Session ${sessionId}] Starting property analysis...`);
 
-    // Step 1: Generate accessibility checklist
-    const checklist = await generateAccessibilityChecklist(sessionId, userNeeds);
-
-    // Step 2: Scrape property images
+    // Steps 1 & 2 in parallel: checklist generation + image scraping
     browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
-    const propertyImages = await scrapePropertyImages(sessionId, browser, address, url);
+
+    const [checklist, propertyImages] = await Promise.all([
+      generateAccessibilityChecklist(sessionId, userNeeds),
+      images
+    ]);
+
     await browser.close();
     browser = null;
 
-    // Step 3: Analyze images for accessibility issues
+    // Step 3: Analyze images for accessibility issues (batches run concurrently)
     const imageAnalysisResults = await analyzeImagesInBatches(
       sessionId,
       propertyImages,
       checklist
     );
 
-    // Step 3.5: Run specialty checks if the checklist flagged any
+    // Step 3.5: Run specialty checks if the checklist flagged any (after image analysis)
     const specialtyFlags = parseSpecialtyFlags(checklist);
     let specialtyResults: SpecialtyResult[] = [];
-    if (specialtyFlags.elevation || specialtyFlags.proximity || specialtyFlags.pollution) {
+    if (specialtyFlags.elevation || specialtyFlags.proximity || specialtyFlags.pollution || specialtyFlags.streetLighting) {
       console.log(`[Session ${sessionId}] Running specialty checks:`, specialtyFlags);
       specialtyResults = await runSpecialtyChecks(
         address || url,
@@ -300,7 +303,7 @@ async function scrapePropertyImages(
     }
   });
 
-  const allImages = Array.from(imagesSet).slice(0, 28); // Limit to 30 images
+  const allImages = Array.from(imagesSet).slice(0, 30); // Limit to 30 images
   console.log(`[Session ${sessionId}] Found ${allImages.length} images`);
 
   return allImages;
@@ -314,46 +317,49 @@ async function analyzeImagesInBatches(
   images: string[],
   checklist: string
 ): Promise<Array<{ image_url: string; trigger_found: string[] | null }>> {
-  const BATCH_SIZE = 4;
-  const BATCH_DELAY_MS = 1000;
+  const BATCH_SIZE = 3;
   const accumulatedResults: Array<{ image_url: string; trigger_found: string[] | null }> = [];
 
   const totalBatches = Math.ceil(images.length / BATCH_SIZE);
-  console.log(`[Session ${sessionId}] Processing ${images.length} images in ${totalBatches} batches...`);
+  console.log(`[Session ${sessionId}] Processing ${images.length} images in ${totalBatches} concurrent batches...`);
 
-  const analysisPrompt = `Analyze these images. Look for the following features that make it not so accessible : ${checklist}. However, try to not flag too many images if not needed, keep it conservative and low
+  const analysisPrompt = `Analyze these images. Look for the following features that make it not so accessible (Make sure it has to do with housing or retail) : ${checklist}. However, try to not flag too many images if not needed, keep it conservative and low
   Return a STRICT JSON array of objects. Format: [{"url": "<image_url>", "trigger": "<describe trigger found, or 'None'>", "pixel_coordinates": <pixel coordinates if possible, if not put null>}]
   I want you to also make sure the identifiers are in groups. There is a list called PROBLEMS: above, I want you to use just those features and make the identifiers those. For the coordinates, make sure its an array of 2 numbers with it being number 1 x number 2.
   Can you also make it so there can be multiple features per image, with it being separated by a comma, only do this if needed
   `;
 
+  // Build all batch tasks
+  const batchTasks: Array<{ batchNum: number; batch: string[] }> = [];
   for (let i = 0; i < images.length; i += BATCH_SIZE) {
-    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-    const batch = images.slice(i, i + BATCH_SIZE);
+    batchTasks.push({
+      batchNum: Math.floor(i / BATCH_SIZE) + 1,
+      batch: images.slice(i, i + BATCH_SIZE)
+    });
+  }
 
+  // Fire all batches concurrently; each one updates the DB as it finishes
+  const batchPromises = batchTasks.map(async ({ batchNum, batch }) => {
     console.log(`[Session ${sessionId}] Processing batch ${batchNum}/${totalBatches}...`);
 
     try {
       const batchResults = await analyzeSingleBatch(batch, analysisPrompt);
+
+      // Push results and update DB immediately (JS is single-threaded, so push is safe)
       accumulatedResults.push(...batchResults);
 
-      // Update database with accumulated results
       await supabase
         .from('evaluations')
-        .update({ image_results: accumulatedResults })
+        .update({ image_results: [...accumulatedResults] })
         .eq('id', sessionId);
 
-      console.log(`[Session ${sessionId}] Batch ${batchNum} completed and saved`);
+      console.log(`[Session ${sessionId}] Batch ${batchNum} completed and saved (${accumulatedResults.length} total results)`);
     } catch (error) {
       console.error(`[Session ${sessionId}] Batch ${batchNum} failed:`, error);
-      // Continue with next batch even if this one fails
     }
+  });
 
-    // Delay between batches to prevent API rate limiting
-    if (batchNum < totalBatches) {
-      await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
-    }
-  }
+  await Promise.allSettled(batchPromises);
 
   return accumulatedResults;
 }
@@ -550,7 +556,7 @@ app.post('/api/images', async (req, res) => {
 
     const targetId = Array.from(images)[0].split("/")[6];
 
-    const imagesArray = Array.from(images).filter((v) => v.split("/")[6] == targetId);
+    const imagesArray = Array.from(images).filter((v) => v.split("/")[6] == targetId).slice(0,30);
     console.log(imagesArray.length);
     console.log(images)
 
