@@ -9,6 +9,7 @@ interface AddressLookupPageProps {
   onGlobeHide: () => void;
   onGlobeShow: () => void;
   handleGlobeUpdate: (coords: Coordinates) => void;
+  hidden?: boolean;
 }
 
 const IMAGE_CARDS = [
@@ -22,6 +23,7 @@ export default function AddressLookupPage({
   onGlobeHide,
   onGlobeShow,
   handleGlobeUpdate,
+  hidden = false,
 }: AddressLookupPageProps) {
   const [address, setAddress] = useState("");
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -109,9 +111,9 @@ export default function AddressLookupPage({
         className="max-w-[1092px] px-6 md:pl-[126px] md:pr-0 transition-[margin] duration-500 ease-in-out mt-12 md:mt-[60px] min-[1440px]:mt-[106px]"
         style={imagesRevealed ? { marginTop: 28 } : undefined}
       >
-        <h1 className="m-0 flex items-center gap-4 text-[48px] font-normal selection:bg-accent leading-[1.04] tracking-[-0.01em] text-primary-dark">
+        <h1 className="m-0 flex items-center gap-3 md:gap-4 text-[28px] sm:text-[36px] md:text-[48px] font-normal selection:bg-accent leading-[1.04] tracking-[-0.01em] text-primary-dark">
           <LocationIcon
-            className="h-[24px] w-[24px] shrink-0 text-primary-dark mt-auto mb-1"
+            className="h-[20px] w-[20px] md:h-[24px] md:w-[24px] shrink-0 text-primary-dark mt-auto mb-1"
             aria-hidden="true"
           />
           <span>where do you want us to look?</span>
@@ -175,14 +177,17 @@ export default function AddressLookupPage({
 
         {showConfirmation && (
           <>
-            <div className="relative mt-0 flex justify-center items-center h-[340px] md:h-[400px]">
+            <div className="relative mt-0 flex justify-center items-center h-[220px] sm:h-[300px] md:h-[400px]">
               {pickedImages.map((url, i) => {
                 const card = IMAGE_CARDS[i];
                 const isEmpty = url === null;
+                const isFlanking = i !== 1;
                 return (
                   <div
                     key={url ?? `empty-${i}`}
-                    className={`absolute w-[260px] h-[180px] md:w-[340px] md:h-[230px] rounded-[14px] transition-all duration-700 ease-out ${
+                    className={`absolute w-[220px] h-[150px] sm:w-[260px] sm:h-[180px] md:w-[340px] md:h-[230px] rounded-[14px] transition-all duration-700 ease-out ${
+                      isFlanking ? "hidden md:block" : ""
+                    } ${
                       isEmpty
                         ? "border-2 border-dashed border-primary-dark/20"
                         : "overflow-hidden shadow-lg"
@@ -196,7 +201,7 @@ export default function AddressLookupPage({
                       transitionDelay: `${i * 120}ms`,
                     }}
                   >
-                    {!isEmpty && (
+                    {!isEmpty && !hidden && (
                       <img
                         src={url}
                         alt={`Property photo ${i + 1}`}
@@ -226,7 +231,7 @@ export default function AddressLookupPage({
                   <ExternalLinkIcon className="text-accent ml-1 size-3 m-auto" />
                 </a>
               </p>
-              <h2 className="mt-1 text-[36px] md:text-[42px] font-normal leading-[1.1] tracking-[-0.01em] text-primary-dark">
+              <h2 className="mt-1 text-[26px] sm:text-[36px] md:text-[42px] font-normal leading-[1.1] tracking-[-0.01em] text-primary-dark">
                 does this look right?
               </h2>
               {resolvedLabel && (
@@ -235,18 +240,19 @@ export default function AddressLookupPage({
                 </p>
               )}
 
-              <div className="mt-6 flex gap-4 pb-12">
+              <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:gap-4 pb-12">
                 <button
                   type="button"
                   onClick={handleConfirmLooksRight}
-                  className="rounded-[10px] cursor-pointer border border-accent bg-transparent px-[24px] py-[8px] text-[16px] leading-none text-accent hover:bg-accent/5 transition-all duration-75"
+                  disabled={images.length < 3}
+                  className="rounded-[10px] cursor-pointer disabled:cursor-not-allowed border border-accent bg-transparent px-[24px] py-[8px] text-[14px] sm:text-[16px] leading-none text-accent hover:bg-accent/5 transition-all duration-75 disabled:opacity-50"
                 >
-                  yep, this looks right
+                  {images.length < 3 ? "not enough photos" : "yep, this looks right"}
                 </button>
                 <button
                   type="button"
                   onClick={handleNotQuite}
-                  className="rounded-[10px] cursor-pointer border border-[#8c908f] bg-transparent px-[24px] py-[8px] text-[16px] leading-none text-primary-dark/70 hover:bg-primary-dark/5 transition-all duration-75"
+                  className="rounded-[10px] cursor-pointer border border-[#8c908f] bg-transparent px-[24px] py-[8px] text-[14px] sm:text-[16px] leading-none text-primary-dark/70 hover:bg-primary-dark/5 transition-all duration-75"
                 >
                   not quite
                 </button>

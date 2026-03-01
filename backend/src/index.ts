@@ -1,10 +1,29 @@
 import express from 'express'
 import cors from 'cors'
-import puppeteer from 'puppeteer';
+import puppeteerCore from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
+
+const IS_LOCAL = process.env.NODE_ENV !== 'production';
+
+async function launchBrowser() {
+  if (IS_LOCAL) {
+    const puppeteer = await import('puppeteer');
+    return puppeteer.default.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+  }
+  return puppeteerCore.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
+  });
+}
 import * as cheerio from 'cheerio';
 import "dotenv/config";
-import { generalImageCall, imageinGroups } from './geminiCall.ts';
-import { runSpecialtyChecks, parseSpecialtyFlags, type SpecialtyResult } from './specialtyfunctions.ts';
+import { generalImageCall, imageinGroups } from './geminiCall.js';
+import { runSpecialtyChecks, parseSpecialtyFlags, type SpecialtyResult } from './specialtyfunctions.js';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from '@supabase/supabase-js';
 
@@ -44,7 +63,7 @@ const supabase = createClient(
 // ---------------------------------------------------------------------------
 // Helper: Search for Redfin URL from Address
 // ---------------------------------------------------------------------------
-async function searchUrlFromAddress(address: string, page: puppeteer.Page): Promise<string | null> {
+async function searchUrlFromAddress(address: string, page: puppeteerCore.Page): Promise<string | null> {
   try {
     //duckduckgo
     const searchUrl = `https://html.duckduckgo.com/html/?q=site:redfin.com+${encodeURIComponent(address)}`;
@@ -155,24 +174,14 @@ async function processPropertyBackground(
   userNeeds: string,
   images: []
 ) {
-  let browser = null;
-
   try {
     console.log(`[Session ${sessionId}] Starting property analysis...`);
 
     // Steps 1 & 2 in parallel: checklist generation + image scraping
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-
     const [checklist, propertyImages] = await Promise.all([
       generateAccessibilityChecklist(sessionId, userNeeds),
-      images
+      Promise.resolve(images)
     ]);
-
-    await browser.close();
-    browser = null;
 
     // Step 3: Analyze images for accessibility issues (batches run concurrently)
     const imageAnalysisResults = await analyzeImagesInBatches(
@@ -207,14 +216,6 @@ async function processPropertyBackground(
   } catch (err) {
     console.error(`[Session ${sessionId}] Processing error:`, err);
     await updateSessionStatus(sessionId, 'error', 'An error occurred during processing.');
-  } finally {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (e) {
-        console.error('Error closing browser:', e);
-      }
-    }
   }
 }
 
@@ -234,11 +235,14 @@ async function generateAccessibilityChecklist(
   Make sure the problematic features are simple.
 
   Finally, on a new line at the very end, output EXACTLY this format (include only the relevant ones, omit those that are not relevant):
-  SPECIALTY_CHECKS: elevation, proximity, pollution
+  SPECIALTY_CHECKS: elevation, proximity, pollution, sidewalk, air, emergency
 
   - Include "elevation" ONLY if the user has severe mobility challenges that make negotiating any stairs or hills completely impossible (e.g., exclusively uses a wheelchair).
   - Include "proximity" ONLY if the user completely lacks transportation and relies entirely on immediate walking distance to daily essential services.
   - Include "pollution" ONLY if the user has a high, medically-necessary sensitivity to noise, light, or busy environments that would cause severe distress.
+  - Include "sidewalk" ONLY if the user relies on a wheelchair, walker, or other mobility device that requires smooth, continuous, accessible pedestrian routes.
+  - Include "air" ONLY if the user has a respiratory condition (e.g., asthma, COPD, severe allergies) or cardiovascular sensitivity where air quality is a direct health concern.
+  - Include "emergency" ONLY if the user has a serious chronic medical condition, lives alone with a disability, or has explicitly indicated that rapid emergency response access is important.
   `;
 
   const result = await fastModel.generateContent(prompt);
@@ -259,7 +263,7 @@ async function generateAccessibilityChecklist(
 // ---------------------------------------------------------------------------
 async function scrapePropertyImages(
   sessionId: string,
-  browser: puppeteer.Browser,
+  browser: puppeteerCore.Browser,
   address: string,
   url: string
 ): Promise<string[]> {
@@ -477,15 +481,17 @@ async function collectTriggeredFlags(
   console.log(`Score: ${score}`);
   console.log(`***************************\n`);
 
-  // Update database with flags, score, and mark completed
-  await supabase
+  const w = await supabase
     .from('evaluations')
     .update({
-      triggered_flags: flagsMap,
+      //triggered_flags: flagsMap,
       final_score: score,
       status: 'completed'
     })
-    .eq('id', sessionId);
+    .eq('id', sessionId); 
+
+    console.log(w);
+    
 }
 
 // ---------------------------------------------------------------------------
@@ -517,10 +523,7 @@ app.post('/api/images', async (req, res) => {
   let browser = null;
 
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    browser = await launchBrowser();
 
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
@@ -602,7 +605,7 @@ app.post('/api/listfromlist/', async (_req, res) => {
 
   Analyze all provided images and return these details from this JSON object:
   {
-  "score": <number 0-100, where 100 is fully accessible>,
+  "score": <number 0-100, where 100 is reasonably accessible>,
   "risks": [
       { "issue": "<what the problem is>", "severity": "<low|medium|high>" }
   ],

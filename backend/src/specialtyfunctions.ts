@@ -8,6 +8,9 @@ export interface SpecialtyFlags {
     proximity: boolean;
     pollution: boolean;
     streetLighting: boolean;
+    sidewalk: boolean;
+    airQuality: boolean;
+    emergencyServices: boolean;
 }
 
 export interface SpecialtyResult {
@@ -310,6 +313,205 @@ Based on this data, write a concise 2-3 sentence assessment of the street lighti
     return { category: 'Street Lighting', findings };
 }
 
+// ---------------------------------------------------------------------------
+// 5. Sidewalk & Pedestrian Infrastructure
+// ---------------------------------------------------------------------------
+async function checkSidewalkInfrastructure(
+    address: string,
+    model: GenerativeModel,
+    coords: { lat: number; lng: number }
+): Promise<SpecialtyResult> {
+    console.log(`[Specialty] Checking sidewalk infrastructure for: ${address}`);
+
+    const { lat, lng } = coords;
+
+    const overpassQuery = `
+    [out:json][timeout:15];
+    (
+      way["highway"="footway"](around:500,${lat},${lng});
+      way["highway"="path"]["foot"="yes"](around:500,${lat},${lng});
+      node["footway"="crossing"](around:500,${lat},${lng});
+      node["kerb"="lowered"](around:500,${lat},${lng});
+      node["kerb"="flush"](around:500,${lat},${lng});
+      node["tactile_paving"="yes"](around:500,${lat},${lng});
+      node["highway"="crossing"](around:500,${lat},${lng});
+    );
+    out body;
+  `;
+
+    let sidewalkSummary = '';
+    try {
+        const overpassRes = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `data=${encodeURIComponent(overpassQuery)}`
+        });
+        const overpassData = await overpassRes.json() as any;
+        const elements = overpassData.elements || [];
+
+        const counts: Record<string, number> = {
+            'Footway/path segments': 0,
+            'Pedestrian crossings': 0,
+            'Lowered/flush kerbs (curb cuts)': 0,
+            'Tactile paving strips': 0,
+        };
+
+        for (const el of elements) {
+            const tags = el.tags || {};
+            if (el.type === 'way' && (tags.highway === 'footway' || tags.highway === 'path')) counts['Footway/path segments']++;
+            else if (tags.footway === 'crossing' || tags.highway === 'crossing') counts['Pedestrian crossings']++;
+            else if (tags.kerb === 'lowered' || tags.kerb === 'flush') counts['Lowered/flush kerbs (curb cuts)']++;
+            else if (tags.tactile_paving === 'yes') counts['Tactile paving strips']++;
+        }
+
+        sidewalkSummary = Object.entries(counts)
+            .map(([name, count]) => `${name}: ${count} within ~500m`)
+            .join('\n');
+    } catch (err) {
+        console.error('[Specialty] Overpass API error for sidewalk check:', err);
+        sidewalkSummary = 'Unable to retrieve sidewalk infrastructure data.';
+    }
+
+    const prompt = `You are an accessibility expert. A property is located at ${address}.
+
+Pedestrian infrastructure found within ~500m of the property:
+${sidewalkSummary}
+
+Based on this data, write a concise 2-3 sentence assessment of how wheelchair- and mobility-device-friendly the immediate pedestrian environment is. Focus on the presence or absence of curb cuts, accessible crossings, and continuous footway coverage. Be practical and specific.`;
+
+    const result = await model.generateContent(prompt);
+    const findings = result.response.text();
+
+    console.log(`[Specialty] Sidewalk findings: ${findings}`);
+    return { category: 'Sidewalk & Pedestrian Infrastructure', findings };
+}
+
+// ---------------------------------------------------------------------------
+// 6. Air Quality
+// ---------------------------------------------------------------------------
+async function checkAirQuality(
+    address: string,
+    model: GenerativeModel,
+    coords: { lat: number; lng: number }
+): Promise<SpecialtyResult> {
+    console.log(`[Specialty] Checking air quality for: ${address}`);
+
+    const { lat, lng } = coords;
+
+    let airQualitySummary = '';
+    try {
+        const aqRes = await fetch(
+            `https://api.openaq.org/v2/latest?coordinates=${lat},${lng}&radius=25000&limit=5&order_by=distance`,
+            { headers: { 'Accept': 'application/json' } }
+        );
+        const aqData = await aqRes.json() as any;
+        const results = aqData.results || [];
+
+        if (results.length === 0) {
+            airQualitySummary = 'No nearby air quality monitoring stations found within 25km.';
+        } else {
+            const lines: string[] = [];
+            for (const station of results) {
+                const name = station.name || 'Unknown station';
+                const distance = station.distance ? `${(station.distance / 1000).toFixed(1)}km away` : 'distance unknown';
+                for (const measurement of (station.measurements || [])) {
+                    lines.push(`${name} (${distance}) — ${measurement.parameter.toUpperCase()}: ${measurement.value} ${measurement.unit} (last updated: ${measurement.lastUpdated})`);
+                }
+            }
+            airQualitySummary = lines.length > 0 ? lines.join('\n') : 'Stations found but no measurements available.';
+        }
+    } catch (err) {
+        console.error('[Specialty] OpenAQ API error:', err);
+        airQualitySummary = 'Unable to retrieve air quality data.';
+    }
+
+    const prompt = `You are an accessibility expert. A property is located at ${address}.
+
+Air quality readings from the nearest monitoring stations:
+${airQualitySummary}
+
+Based on this data, write a concise 2-3 sentence assessment of the local air quality and its potential impact on residents with respiratory conditions (asthma, COPD, allergies) or cardiovascular sensitivities. Reference specific pollutant levels where available, and note if data coverage is limited. Be practical and specific.`;
+
+    const result = await model.generateContent(prompt);
+    const findings = result.response.text();
+
+    console.log(`[Specialty] Air quality findings: ${findings}`);
+    return { category: 'Air Quality', findings };
+}
+
+// ---------------------------------------------------------------------------
+// 7. Emergency Services Proximity
+// ---------------------------------------------------------------------------
+async function checkEmergencyServices(
+    address: string,
+    model: GenerativeModel,
+    coords: { lat: number; lng: number }
+): Promise<SpecialtyResult> {
+    console.log(`[Specialty] Checking emergency services proximity for: ${address}`);
+
+    const { lat, lng } = coords;
+
+    const overpassQuery = `
+    [out:json][timeout:15];
+    (
+      node["amenity"="fire_station"](around:3000,${lat},${lng});
+      way["amenity"="fire_station"](around:3000,${lat},${lng});
+      node["amenity"="hospital"](around:5000,${lat},${lng});
+      way["amenity"="hospital"](around:5000,${lat},${lng});
+      node["amenity"="ambulance_station"](around:3000,${lat},${lng});
+      node["emergency"="ambulance_station"](around:3000,${lat},${lng});
+      node["emergency"="defibrillator"](around:500,${lat},${lng});
+    );
+    out body;
+  `;
+
+    let emergencySummary = '';
+    try {
+        const overpassRes = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `data=${encodeURIComponent(overpassQuery)}`
+        });
+        const overpassData = await overpassRes.json() as any;
+        const elements = overpassData.elements || [];
+
+        const counts: Record<string, number> = {
+            'Fire stations (within 3km)': 0,
+            'Hospitals (within 5km)': 0,
+            'Ambulance stations (within 3km)': 0,
+            'Defibrillators (within 500m)': 0,
+        };
+
+        for (const el of elements) {
+            const tags = el.tags || {};
+            if (tags.amenity === 'fire_station') counts['Fire stations (within 3km)']++;
+            else if (tags.amenity === 'hospital') counts['Hospitals (within 5km)']++;
+            else if (tags.amenity === 'ambulance_station' || tags.emergency === 'ambulance_station') counts['Ambulance stations (within 3km)']++;
+            else if (tags.emergency === 'defibrillator') counts['Defibrillators (within 500m)']++;
+        }
+
+        emergencySummary = Object.entries(counts)
+            .map(([name, count]) => `${name}: ${count}`)
+            .join('\n');
+    } catch (err) {
+        console.error('[Specialty] Overpass API error for emergency services:', err);
+        emergencySummary = 'Unable to retrieve emergency services data.';
+    }
+
+    const prompt = `You are an accessibility expert. A property is located at ${address}.
+
+Emergency services found near the property:
+${emergencySummary}
+
+Based on this data, write a concise 2-3 sentence assessment of how well-served the area is by emergency services. Consider the implications for residents who live alone with disabilities, have chronic medical conditions, or require rapid emergency response. Be practical and specific.`;
+
+    const result = await model.generateContent(prompt);
+    const findings = result.response.text();
+
+    console.log(`[Specialty] Emergency services findings: ${findings}`);
+    return { category: 'Emergency Services Proximity', findings };
+}
+
 export async function runSpecialtyChecks(
     address: string,
     model: GenerativeModel,
@@ -341,6 +543,15 @@ export async function runSpecialtyChecks(
     if (flags.streetLighting) {
         tasks.push(checkStreetLighting(address, model, coords));
     }
+    if (flags.sidewalk) {
+        tasks.push(checkSidewalkInfrastructure(address, model, coords));
+    }
+    if (flags.airQuality) {
+        tasks.push(checkAirQuality(address, model, coords));
+    }
+    if (flags.emergencyServices) {
+        tasks.push(checkEmergencyServices(address, model, coords));
+    }
 
     if (tasks.length === 0) {
         return results;
@@ -363,7 +574,7 @@ export async function runSpecialtyChecks(
 // Helper: Parse SPECIALTY_CHECKS line from checklist
 // ---------------------------------------------------------------------------
 export function parseSpecialtyFlags(checklist: string): SpecialtyFlags {
-    const flags: SpecialtyFlags = { elevation: false, proximity: false, pollution: false, streetLighting: false };
+    const flags: SpecialtyFlags = { elevation: false, proximity: false, pollution: false, streetLighting: false, sidewalk: false, airQuality: false, emergencyServices: false };
 
     const match = checklist.match(/SPECIALTY_CHECKS:\s*(.+)/i);
     if (!match) return flags;
@@ -373,6 +584,9 @@ export function parseSpecialtyFlags(checklist: string): SpecialtyFlags {
     if (tokens.includes('proximity')) flags.proximity = true;
     if (tokens.includes('pollution')) flags.pollution = true;
     if (tokens.includes('lighting') || tokens.includes('streetlight') || tokens.includes('vision')) flags.streetLighting = true;
+    if (tokens.includes('sidewalk')) flags.sidewalk = true;
+    if (tokens.includes('air') || tokens.includes('airquality')) flags.airQuality = true;
+    if (tokens.includes('emergency')) flags.emergencyServices = true;
 
     return flags;
 }

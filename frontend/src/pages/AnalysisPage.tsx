@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getEvaluationUpdateById,
   type PropertySession,
@@ -9,44 +9,67 @@ import ResearchIcon from "../icons/ResearchIcon";
 interface AnalysisPageProps {
   images: string[];
   sessionId: string;
+  onComplete?: (session: PropertySession) => void;
 }
 
 /* ---------------------------------------------------------------------------
- * Data helpers
+ * Generate deterministic fan transforms for each card across the full width.
+ * Uses a seeded pseudo-random so the layout is stable across re-renders.
  * -------------------------------------------------------------------------*/
-
-/** Normalize trigger_found into a flat string array. */
-function parseTriggers(raw: SessionImageResult["trigger_found"]): string[] {
-  if (!raw) return [];
-  if (typeof raw === "string")
-    return raw
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  return raw.flatMap((t) =>
-    t
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-  );
+function seededRandom(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return s / 2147483647;
+  };
 }
 
-/* Card transform presets — mirrors the AddressLookupPage fan-out style */
-const CARD_TRANSFORMS = [
-  { rotate: -4, x: -30, y: 14, z: 3 },
-  { rotate: 2, x: 10, y: -6, z: 2 },
-  { rotate: 6, x: 50, y: 18, z: 1 },
-];
+function generateCardTransforms(count: number) {
+  const rand = seededRandom(42);
+  return Array.from({ length: count }, (_, i) => {
+    // Spread cards across the container but keep them fully visible
+    // Cards are ~260px wide on md (~22% of 1180px usable), so cap left at ~75%
+    const left = 5 + rand() * 70;
+    // Cards are ~175px tall on md (~36% of 480px), so cap top at ~60%
+    const top = 5 + rand() * 55;
+    return {
+      rotate: (rand() - 0.5) * 20, // -10 to +10 deg
+      left,
+      top,
+      zIndex: i + 1,
+      delay: i * 120,
+    };
+  });
+}
+
+function hasFlags(result: SessionImageResult): boolean {
+  if (!result.trigger_found) return false;
+  return result.trigger_found.length > 0;
+}
 
 /* ---------------------------------------------------------------------------
  * Component
  * -------------------------------------------------------------------------*/
 
-export default function AnalysisPage({ images, sessionId }: AnalysisPageProps) {
+export default function AnalysisPage({
+  images,
+  sessionId,
+  onComplete,
+}: AnalysisPageProps) {
   const [sessionData, setSessionData] = useState<PropertySession | null>(null);
   const [revealedCount, setRevealedCount] = useState(0);
   const prevResultCount = useRef(0);
   const pollingRef = useRef(true);
+  const completeFiredRef = useRef(false);
+  const completeTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  const totalImages = images.length;
+  const cardTransforms = useMemo(
+    () => generateCardTransforms(totalImages),
+    [totalImages],
+  );
 
   /* --- Polling ---------------------------------------------------------- */
   useEffect(() => {
@@ -59,6 +82,12 @@ export default function AnalysisPage({ images, sessionId }: AnalysisPageProps) {
         setSessionData(data);
         if (data.status === "completed" || data.status === "error") {
           pollingRef.current = false;
+          if (data.status === "completed" && !completeFiredRef.current) {
+            completeFiredRef.current = true;
+            completeTimerRef.current = setTimeout(() => {
+              onCompleteRef.current?.(data);
+            }, 1500);
+          }
           return;
         }
         setTimeout(poll, 400);
@@ -70,16 +99,15 @@ export default function AnalysisPage({ images, sessionId }: AnalysisPageProps) {
     poll();
     return () => {
       pollingRef.current = false;
+      clearTimeout(completeTimerRef.current);
     };
   }, [sessionId]);
 
   /* --- Trigger reveal animation when new results arrive ----------------- */
   const results: SessionImageResult[] = sessionData?.image_results ?? [];
-  const totalImages = images.length;
 
   useEffect(() => {
     if (results.length > prevResultCount.current) {
-      // Stagger-reveal each new result
       const newCount = results.length;
       const oldCount = prevResultCount.current;
       prevResultCount.current = newCount;
@@ -91,14 +119,8 @@ export default function AnalysisPage({ images, sessionId }: AnalysisPageProps) {
     }
   }, [results.length]);
 
-  /* --- Pick the 3 most-recently-revealed results for the card fan ------- */
   const revealedResults = results.slice(0, revealedCount);
-  const visibleCards = revealedResults.slice(-3);
-  // The "active" card is the most recent (top of the pile)
-  const activeResult = visibleCards[visibleCards.length - 1] ?? null;
-  const activeTriggers = activeResult
-    ? parseTriggers(activeResult.trigger_found)
-    : [];
+  const flaggedCount = revealedResults.filter(hasFlags).length;
 
   const isProcessing =
     sessionData?.status !== "completed" && sessionData?.status !== "error";
@@ -120,81 +142,65 @@ export default function AnalysisPage({ images, sessionId }: AnalysisPageProps) {
           surrounding it.
         </p>
 
-        <div className="mt-8 flex flex-col md:flex-row gap-8 items-start">
-          {/* ---- Card fan ------------------------------------------------- */}
-          <div className="relative w-full md:w-[65%] flex-shrink-0">
-            <div className="relative flex justify-center items-center h-[320px] md:h-[400px]">
-              {visibleCards.map((result, i) => {
-                const card = CARD_TRANSFORMS[i];
-                const isTop = i === visibleCards.length - 1;
-                return (
-                  <div
-                    key={result.image_url}
-                    className="absolute w-[280px] h-[190px] md:w-[400px] md:h-[270px] rounded-[14px] overflow-hidden shadow-lg transition-all duration-700 ease-out"
-                    style={{
-                      zIndex: card.z,
-                      transform: `rotate(${card.rotate}deg) translateX(${card.x}px) translateY(${card.y}px)`,
-                      opacity: isTop ? 1 : 0.85,
-                    }}
-                  >
-                    <img
-                      src={result.image_url}
-                      alt="Analyzed property photo"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                );
-              })}
+        {/* ---- Fanned cards scattered across the width -------------------- */}
+        <div className="relative mt-8 w-full h-[380px] md:h-[480px]">
+          {revealedResults.map((result, i) => {
+            const card = cardTransforms[i];
 
-              {/* Empty placeholder cards while nothing has arrived yet */}
-              {visibleCards.length === 0 &&
-                CARD_TRANSFORMS.map((card, i) => (
-                  <div
-                    key={`empty-${i}`}
-                    className="absolute w-[280px] h-[190px] md:w-[400px] md:h-[270px] rounded-[14px] border-2 border-dashed border-primary-dark/15 transition-all duration-700 ease-out"
-                    style={{
-                      zIndex: card.z,
-                      transform: `rotate(${card.rotate}deg) translateX(${card.x}px) translateY(${card.y}px)`,
-                      opacity: 0.4,
-                    }}
-                  />
-                ))}
-            </div>
-
-            {/* Progress counter */}
-            <p className="text-center text-[13px] text-primary-dark/40 mt-2">
-              {revealedCount} of {totalImages} analyzed
-              {isProcessing && (
-                <span className="inline-block w-[3px] h-[3px] rounded-full bg-accent ml-2 align-middle animate-pulse" />
-              )}
-            </p>
-          </div>
-
-          {/* ---- Findings sidebar ----------------------------------------- */}
-          <div className="flex-1 min-w-0 pt-2">
-            {activeTriggers.length > 0 ? (
-              <ul className="space-y-3 list-none p-0 m-0">
-                {activeTriggers.map((trigger, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="mt-[6px] w-[8px] h-[8px] rounded-full bg-accent shrink-0" />
-                    <span className="text-[15px] text-primary-dark leading-snug">
-                      {trigger}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : activeResult ? (
-              <p className="text-[15px] text-primary-dark/50">
-                No issues detected for this image.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                <div className="h-[12px] w-[50%] rounded-full bg-primary-dark/5 animate-pulse" />
-                <div className="h-[10px] w-[70%] rounded-full bg-primary-dark/5 animate-pulse" />
-                <div className="h-[10px] w-[40%] rounded-full bg-primary-dark/5 animate-pulse" />
+            return (
+              <div
+                key={result.image_url}
+                className="absolute w-[180px] h-[122px] md:w-[260px] md:h-[175px] rounded-[14px] overflow-hidden shadow-lg"
+                style={{
+                  left: `${card.left}%`,
+                  top: `${card.top}%`,
+                  zIndex: card.zIndex,
+                  opacity: 0,
+                  transform: `rotate(0deg) translateX(-120px) scale(0.8)`,
+                  animation: `cardSlideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) ${card.delay}ms forwards`,
+                  // CSS custom properties for the target transform
+                  ...({
+                    "--card-rotate": `${card.rotate}deg`,
+                  } as React.CSSProperties),
+                }}
+              >
+                <img
+                  src={result.image_url}
+                  alt="Analyzed property photo"
+                  className="w-full h-full object-cover"
+                />
+                {hasFlags(result) && (
+                  <span className="absolute top-2 right-2 w-[10px] h-[10px] rounded-full bg-accent shadow-md" />
+                )}
               </div>
+            );
+          })}
+        </div>
+
+        <style>{`
+          @keyframes cardSlideIn {
+            0% {
+              opacity: 0;
+              transform: rotate(0deg) translateX(-120px) scale(0.8);
+            }
+            100% {
+              opacity: 1;
+              transform: rotate(var(--card-rotate)) translateX(0) scale(1);
+            }
+          }
+        `}</style>
+
+        {/* Progress counter */}
+        <div className="mt-4 flex items-center text-[13px] text-primary-dark/40">
+          <span>
+            {revealedCount} of {totalImages} analyzed
+            {isProcessing && (
+              <span className="inline-block w-[3px] h-[3px] rounded-full bg-accent ml-2 align-middle animate-pulse" />
             )}
-          </div>
+          </span>
+          {flaggedCount > 0 && (
+            <span className="ml-3 text-accent/70">{flaggedCount} flagged</span>
+          )}
         </div>
       </div>
     </section>

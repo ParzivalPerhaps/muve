@@ -8,11 +8,13 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "5.1.0",
-    "puppeteer": "^24.37.5"
+    "puppeteer-core": "^24.37.5",
+    "@sparticuz/chromium": "^133.0.0"
   },
   "devDependencies": {
     "@types/express": "5.0.0",
     "@types/node": "20.11.17",
+    "puppeteer": "^24.37.5",
     "tsx": "^4.21.0",
     "typescript": "5.8.3"
   },

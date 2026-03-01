@@ -2,12 +2,14 @@ import { useState } from "react";
 import AddressLookupPage from "./pages/AddressLookupPage";
 import RequirementsEntryPage from "./pages/RequirementsEntryPage";
 import AnalysisPage from "./pages/AnalysisPage";
+import ReportPage from "./pages/ReportPage";
 import BottomGlobe, {
   DEFAULT_COORDINATES,
   type Coordinates,
 } from "./components/BottomGlobe";
+import type { PropertySession } from "./lib/api";
 
-type Step = "address" | "requirements" | "analysis";
+type Step = "address" | "requirements" | "analysis" | "report";
 
 function App() {
   const [step, setStep] = useState<Step>("address");
@@ -22,6 +24,7 @@ function App() {
   const [confirmedAddress, setConfirmedAddress] = useState("");
   const [confirmedImages, setConfirmedImages] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState("");
+  const [finalSession, setFinalSession] = useState<PropertySession | null>(null);
 
   function handleAddressConfirmed(
     _coords: Coordinates,
@@ -35,7 +38,9 @@ function App() {
 
   function handleEvaluationStarted(id: string) {
     setSessionId(id);
-    setTimeout(() => setStep("analysis"), 3000);
+    setTimeout(() => {
+      setStep((current) => (current === "requirements" ? "analysis" : current));
+    }, 3000);
   }
 
   function handleGlobeHide() {
@@ -43,6 +48,20 @@ function App() {
   }
 
   function handleGlobeShow() {
+    setGlobeHidden(false);
+  }
+
+  function handleAnalysisComplete(session: PropertySession) {
+    setFinalSession(session);
+    setTimeout(() => setStep("report"), 300);
+  }
+
+  function handleReportComplete() {
+    setStep("address");
+    setFinalSession(null);
+    setSessionId("");
+    setConfirmedAddress("");
+    setConfirmedImages([]);
     setGlobeHidden(false);
   }
 
@@ -83,6 +102,7 @@ function App() {
             onAddressConfirmed={handleAddressConfirmed}
             onGlobeHide={handleGlobeHide}
             onGlobeShow={handleGlobeShow}
+            hidden={step !== "address"}
           />
         </div>
 
@@ -106,12 +126,34 @@ function App() {
         {/* Analysis page */}
         <div
           className={`absolute inset-0 transition-transform duration-700 ease-in-out ${
-            step === "analysis" ? "translate-x-0" : "translate-x-full"
+            step === "analysis"
+              ? "translate-x-0"
+              : step === "report"
+                ? "-translate-x-full"
+                : "translate-x-full"
           }`}
         >
           {sessionId && (
-            <AnalysisPage images={confirmedImages} sessionId={sessionId} />
+            <AnalysisPage
+              images={confirmedImages}
+              sessionId={sessionId}
+              onComplete={handleAnalysisComplete}
+            />
           )}
+        </div>
+
+        {/* Report page */}
+        <div
+          className={`absolute inset-0 transition-transform duration-700 ease-in-out ${
+            step === "report" ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <ReportPage
+            session={finalSession}
+            address={confirmedAddress}
+            images={confirmedImages}
+            onComplete={handleReportComplete}
+          />
         </div>
       </div>
 

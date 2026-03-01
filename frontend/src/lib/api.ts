@@ -44,7 +44,7 @@ export type AnalyzePropertyRequest = {
   address?: string;
   url?: string;
   userNeeds: string;
-  images?: string[];
+  images: string[];
 };
 
 export type AnalyzePropertyResponse = {
@@ -54,8 +54,7 @@ export type AnalyzePropertyResponse = {
 
 export type SessionImageResult = {
   image_url: string;
-  trigger_found: string[] | string | null;
-  pixel_coordinates?: [number, number] | number[] | string | null;
+  trigger_found: string[] | null;
 };
 
 export type SpecialtyResult = {
@@ -97,15 +96,10 @@ export type ListFromListResponse = {
 export async function analyzeProperty(
   body: AnalyzePropertyRequest,
 ): Promise<AnalyzePropertyResponse> {
-  const normalizedBody: AnalyzePropertyRequest = {
-    ...body,
-    images: body.images ?? [],
-  };
-
   return doFetch<AnalyzePropertyResponse>("/api/analyzeProperty", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(normalizedBody),
+    body: JSON.stringify(body),
   });
 }
 
